@@ -1,0 +1,51 @@
+# ─── Secrets ────────────────────────────────────────────────────────────────
+.env
+*.key
+
+# ─── Generated artifacts ────────────────────────────────────────────────────
+output/
+data/cache.json
+data/cache.json.bak
+
+# ─── Journal content (framework-only is public; notes are private) ──────────
+# See journal/HOWTO.md for rationale.
+journal/**/*.md
+!journal/_template.md
+!journal/HOWTO.md
+# Auto-generated index has private titles — keep local only.
+journal/README.md
+
+# ─── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ─── Virtual envs ───────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ─── Editors / OS ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ─── Sandbox artifacts (ad hoc, not public) ─────────────────────────────────
+scripts/sandbox/*.py
+!scripts/sandbox/.gitkeep
+
+# Remove this line if you want to publish the HY vs STLFSI worked example:
+!scripts/sandbox/2026-04-18_hy-spreads-vs-stlfsi-divergence.py
+
+# ─── Misc ───────────────────────────────────────────────────────────────────
+pytest-cache-files-*/
+*.log
