@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from scripts._utils import JournalEntry  # noqa: F401
 
 from catalog.series import SERIES_CATALOG, ALLOWED_LENSES
+from core.display import change_kind, compute_change, fmt_change, fmt_value
 from analysis.breadth import compute_lens_breadth
 from analysis.divergence import (
     compute_intra_lens_divergence,
@@ -175,7 +176,7 @@ def generate_weekly_briefing(
             lens, lens_reports[lens], intra_reports[lens], anomaly_report,
         ))
     sections.append(_render_non_consensus(nc_report))
-    sections.append(_render_anomalies_feed(anomaly_report))
+    sections.append(_render_anomalies_feed(anomaly_report, snapshot))
     if journal_entries:
         sections.append(_render_journal(journal_entries))
     sections.append(_render_footer(as_of, today))
@@ -775,7 +776,7 @@ def _render_non_consensus(nc_report) -> str:
 """
 
 
-def _render_anomalies_feed(anomaly_report) -> str:
+def _render_anomalies_feed(anomaly_report, snapshot: dict | None = None) -> str:
     if not anomaly_report.top:
         return """
 <section class="brief-section">
@@ -787,12 +788,30 @@ def _render_anomalies_feed(anomaly_report) -> str:
     for i, a in enumerate(anomaly_report.top, 1):
         new_ext = (f"<span class='ne'>NEW 5Y {a.new_extreme_direction.upper()}</span>"
                    if a.is_new_extreme and a.new_extreme_direction else "")
+
+        # Smart value + Δ (1 period back) — display-by-type-aware
+        meta = SERIES_CATALOG.get(a.series_key, {})
+        kind = change_kind(a.series_key, meta)
+        value_cell = fmt_value(a.last_value, digits=2 if kind == "absolute" else 3)
+
+        delta_cell = "—"
+        if snapshot is not None:
+            s = snapshot.get(a.series_key)
+            if s is not None and not s.empty and len(s) >= 2:
+                try:
+                    delta_series = compute_change(s, kind, periods=1)
+                    delta_cell = fmt_change(delta_series.iloc[-1], kind)
+                except Exception:
+                    pass
+
         rows.append(f"""
 <tr>
   <td class="rank">{i}</td>
   <td>{_arrow(a.direction)}</td>
   <td>{render_series_ref(a.series_key, 'code-ref', EXPLORER_HREF)}{_revision_caveat(a.series_key)}</td>
   <td>{html.escape(a.series_name_bg)}</td>
+  <td class="num">{value_cell}</td>
+  <td class="num">{delta_cell}</td>
   <td class="num">{a.z_score:+.2f}</td>
   <td>{new_ext}</td>
   <td>{" / ".join(html.escape(l) for l in a.lens)}</td>
@@ -804,7 +823,8 @@ def _render_anomalies_feed(anomaly_report) -> str:
   <h2>Top Anomalies ({len(anomaly_report.top)}/{anomaly_report.total_flagged})</h2>
   <table class="anom-table">
     <thead><tr>
-      <th>#</th><th></th><th>серия</th><th>име</th><th>z</th>
+      <th>#</th><th></th><th>серия</th><th>име</th>
+      <th>стойност</th><th>Δ</th><th>z</th>
       <th>5Y екстремум</th><th>lens</th><th>peer group</th>
     </tr></thead>
     <tbody>{"".join(rows)}</tbody>

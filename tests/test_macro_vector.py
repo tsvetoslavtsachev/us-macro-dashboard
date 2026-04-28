@@ -45,7 +45,7 @@ from analysis.macro_vector import (  # noqa: E402
 # ============================================================
 
 def _monthly_range(start: str, end: str) -> pd.DatetimeIndex:
-    return pd.date_range(start=start, end=end, freq="M")
+    return pd.date_range(start=start, end=end, freq="ME")
 
 
 def _daily_range(start: str, end: str) -> pd.DatetimeIndex:

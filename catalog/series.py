@@ -605,23 +605,9 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     # ───────────────────────────────────────────────────────
     # GROWTH / leading
     # ───────────────────────────────────────────────────────
+    # 2026-04-28: USSLIND (Philly Fed Leading Index) премахнат — FRED спира
+    # публикация на 2020-02-01 (discontinued). Заменен с CFNAI в leading basket.
 
-    "USSLIND": {
-        "source": "fred",
-        "id": "USSLIND",
-        "region": "US",
-        "name_bg": "Leading Index (Philly Fed)",
-        "name_en": "Leading Index for the United States",
-        "lens": ["growth"],
-        "peer_group": "leading",
-        "tags": [],
-        "transform": "level",
-        "historical_start": "1982-01-01",
-        "release_schedule": "monthly",
-        "typical_release": "end_of_month",
-        "revision_prone": False,
-        "narrative_hint": "Composite от ~10 components. Отрицателни стойности сигнализират recession в 6-месечен хоризонт.",
-    },
     "CFNAI": {
         "source": "fred",
         "id": "CFNAI",
@@ -695,22 +681,9 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "revision_prone": False,
         "narrative_hint": "Known за dramatic bottoms. Силно корелира с election cycles, gas prices и post-2024 показва политически bias (D vs R) — гледай breadth с Conference Board/OECD proxy, не individual прочит.",
     },
-    "CONS_CONF_OECD": {
-        "source": "fred",
-        "id": "CSCICP03USM665S",
-        "region": "US",
-        "name_bg": "OECD Consumer Confidence (US)",
-        "name_en": "OECD Consumer Confidence Indicator — US",
-        "lens": ["growth"],
-        "peer_group": "consumer_sentiment",
-        "tags": [],
-        "transform": "level",
-        "historical_start": "1960-01-01",
-        "release_schedule": "monthly",
-        "typical_release": "mid_month",
-        "revision_prone": False,
-        "narrative_hint": "Proxy за Conference Board CCI (не е free на FRED). OECD standardized около 100 — полезен като cross-check срещу Michigan (D/R political bias).",
-    },
+    # 2026-04-28: CONS_CONF_OECD (CSCICP03USM665S) премахнат — FRED има само
+    # до 2024-01-01 (discontinued OECD series). UMCSENT покрива consumer
+    # sentiment lens.
 
     # ───────────────────────────────────────────────────────
     # GROWTH / business_sentiment

@@ -36,7 +36,9 @@ from analysis.executive import REGIME_LABELS
 # HELPERS
 # ============================================================
 
-def weekly(values: list[float], end: str = "2026-04-18") -> pd.Series:
+def weekly(values: list[float], end: str = "2026-04-17") -> pd.Series:
+    # NB: end must align to W-FRI (Friday) — pandas 2.x не включва крайната дата,
+    # ако не е на честотата.
     idx = pd.date_range(end=end, periods=len(values), freq="W-FRI")
     return pd.Series(values, index=idx)
 

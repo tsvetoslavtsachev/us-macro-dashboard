@@ -29,7 +29,7 @@ SERIES = {
     # Leading / Forward-looking
     "T10Y3M":   {"label": "10Y-3M Yield Curve (%)", "invert": False},
     "T10Y2Y":   {"label": "10Y-2Y Yield Curve (%)", "invert": False},
-    "USSLIND":  {"label": "Leading Index", "invert": False},
+    "CFNAI":    {"label": "Chicago Fed Activity Index", "invert": False},
     "PERMIT":   {"label": "Building Permits (000s)", "invert": False},
     "UMCSENT":  {"label": "U Mich Consumer Sentiment", "invert": False},
 }
@@ -38,7 +38,7 @@ SERIES = {
 ACTIVITY_SERIES   = ["INDPRO", "RSXFS", "DPCERA3M086SBEA", "TOTALSA"]
 ACTIVITY_WEIGHTS  = [0.35,     0.30,    0.25,               0.10]
 
-LEADING_SERIES    = ["T10Y3M", "T10Y2Y", "USSLIND", "PERMIT", "UMCSENT"]
+LEADING_SERIES    = ["T10Y3M", "T10Y2Y", "CFNAI", "PERMIT", "UMCSENT"]
 LEADING_WEIGHTS   = [0.25,     0.20,     0.25,      0.15,     0.15]
 
 # Режими
@@ -51,7 +51,7 @@ REGIMES = [
 ]
 
 # Серии, за които изчисляваме YoY (level серии)
-LEVEL_SERIES = {"INDPRO", "RSXFS", "DPCERA3M086SBEA", "TOTALSA", "PERMIT", "USSLIND"}
+LEVEL_SERIES = {"INDPRO", "RSXFS", "DPCERA3M086SBEA", "TOTALSA", "PERMIT"}
 
 
 def run(client) -> dict:
@@ -83,7 +83,7 @@ def run(client) -> dict:
     regime_label, regime_color = _get_regime(composite)
 
     sparklines = {}
-    for sid in ["INDPRO", "RSXFS", "T10Y3M", "USSLIND", "UMCSENT"]:
+    for sid in ["INDPRO", "RSXFS", "T10Y3M", "CFNAI", "UMCSENT"]:
         if sid in raw:
             s = _transform(sid, raw[sid])
             sparklines[sid] = build_sparkline(s, months=36)
@@ -138,7 +138,7 @@ def _get_regime(score: float) -> tuple:
 
 def _key_readings(scores: dict, raw: dict) -> list:
     result = []
-    for sid in ["INDPRO", "RSXFS", "T10Y3M", "T10Y2Y", "USSLIND", "UMCSENT"]:
+    for sid in ["INDPRO", "RSXFS", "T10Y3M", "T10Y2Y", "CFNAI", "UMCSENT"]:
         if sid in scores:
             s = scores[sid]
             result.append({

@@ -338,6 +338,16 @@ class FredAdapter:
     # Cache logic
     # ─────────────────────────────────────────────────────
 
+    def find_stale_specs(self, specs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """От подаден списък FRED specs връща само тези, чийто кеш е stale (TTL изтекъл).
+
+        Used by run.py --briefing flow за auto-refresh без --refresh флаг.
+        """
+        return [
+            s for s in specs
+            if not self._is_cache_fresh(s["key"], s.get("release_schedule", "monthly"))
+        ]
+
     def _is_cache_fresh(self, series_key: str, release_schedule: str) -> bool:
         entry = self._cache.get(series_key)
         if entry is None:

@@ -33,11 +33,11 @@ class TestCatalogSize:
     """Очакван размер — пази срещу silent drift (случайни изтрити серии)."""
 
     def test_minimum_total_count(self):
-        """Каталогът не трябва да пада под очаквания размер (70).
+        """Каталогът не трябва да пада под очаквания размер (68).
 
         Upper bound — intentionally open (можем да добавяме)."""
-        assert len(SERIES_CATALOG) >= 70, (
-            f"Каталогът има само {len(SERIES_CATALOG)} серии — очаквахме ≥70. "
+        assert len(SERIES_CATALOG) >= 68, (
+            f"Каталогът има само {len(SERIES_CATALOG)} серии — очаквахме ≥68. "
             "Някой е изтрил серии без обновяване на теста?"
         )
 

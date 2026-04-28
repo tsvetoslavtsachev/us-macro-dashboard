@@ -34,7 +34,15 @@ import numpy as np
 import pandas as pd
 
 from catalog.series import SERIES_CATALOG
-from core.primitives import z_score, yoy_pct, mom_pct
+from core.primitives import z_score, yoy_pct, mom_pct, first_diff, _infer_yoy_periods
+from core.display import (
+    change_kind,
+    compute_change,
+    fmt_change,
+    short_period_label,
+    long_period_label,
+    change_header,
+)
 from export.weekly_briefing import (
     LENS_ORDER,
     LENS_LABEL_BG,
@@ -210,7 +218,7 @@ def _render_series_section(series_key: str, snapshot) -> str:
     # Подсекции
     meta_panel = _render_metadata_panel(series_key, series)
     if has_data:
-        readings_table = _render_readings_table(series)
+        readings_table = _render_readings_table(series_key, series)
         sparkline = _render_sparkline(series)
     else:
         readings_table = '<div class="sub-empty">Няма наличен snapshot за тази серия.</div>'
@@ -301,47 +309,61 @@ def _render_metadata_panel(series_key: str, series: pd.Series) -> str:
     return f'<div class="md-list">{"".join(fields)}</div>{hint_html}'
 
 
-def _render_readings_table(series: pd.Series) -> str:
-    """Последните N readings с z, YoY%, MoM%."""
+def _render_readings_table(series_key: str, series: pd.Series) -> str:
+    """Последните N readings с z + дълга/кратка промяна (адаптивна по тип серия).
+
+    За rate серии (BREAKEVEN, UST, OAS) показва Δ в bps вместо %.
+    За signed индекси (NFCI, CFNAI) показва абсолютна Δ.
+    За останалите (CPI, payrolls и др.) — YoY%/MoM% както преди.
+    """
     s = series.dropna().sort_index()
     if s.empty:
         return '<div class="sub-empty">Празна серия.</div>'
 
-    # Compute всички transform-и (на пълната серия), вземаме tail-а
+    meta = SERIES_CATALOG.get(series_key, {})
+    kind = change_kind(series_key, meta)
+    long_periods = _infer_yoy_periods(s) if len(s) >= 13 else 0
+    short_periods = 1
+    long_lbl = long_period_label(long_periods)
+    short_lbl = short_period_label(long_periods)
+
+    # z остава винаги
     try:
         z = z_score(s)
     except Exception:
         z = pd.Series(dtype=float, index=s.index)
+
+    # Long и short change според kind
     try:
-        yy = yoy_pct(s) if len(s) >= 13 else pd.Series(dtype=float, index=s.index)
+        long_chg = compute_change(s, kind, long_periods)
+        short_chg = compute_change(s, kind, short_periods) if len(s) >= 2 else pd.Series(dtype=float, index=s.index)
     except Exception:
-        yy = pd.Series(dtype=float, index=s.index)
-    try:
-        mm = mom_pct(s) if len(s) >= 2 else pd.Series(dtype=float, index=s.index)
-    except Exception:
-        mm = pd.Series(dtype=float, index=s.index)
+        long_chg = pd.Series(dtype=float, index=s.index)
+        short_chg = pd.Series(dtype=float, index=s.index)
+
+    long_header = change_header(kind, long_lbl)
+    short_header = change_header(kind, short_lbl)
 
     tail = s.tail(LATEST_N_READINGS)
     rows = []
     for dt, val in tail.items():
         z_cell = _fmt_num(z.get(dt), digits=2, signed=True)
-        yy_cell = _fmt_pct(yy.get(dt))
-        mm_cell = _fmt_pct(mm.get(dt))
+        long_cell = fmt_change(long_chg.get(dt), kind)
+        short_cell = fmt_change(short_chg.get(dt), kind)
         rows.append(
             f"<tr>"
             f"<td>{dt.date().isoformat() if hasattr(dt, 'date') else str(dt)[:10]}</td>"
             f"<td class='num'>{_fmt_num(val, digits=3)}</td>"
             f"<td class='num'>{z_cell}</td>"
-            f"<td class='num'>{yy_cell}</td>"
-            f"<td class='num'>{mm_cell}</td>"
+            f"<td class='num'>{long_cell}</td>"
+            f"<td class='num'>{short_cell}</td>"
             f"</tr>"
         )
-    # Най-новото — в горе. Tail е oldest→newest, обръщаме.
     rows.reverse()
     return f"""
 <table class="readings-table">
   <thead><tr>
-    <th>дата</th><th>стойност</th><th>z</th><th>YoY %</th><th>MoM %</th>
+    <th>дата</th><th>стойност</th><th>z</th><th>{long_header}</th><th>{short_header}</th>
   </tr></thead>
   <tbody>{"".join(rows)}</tbody>
 </table>
@@ -508,17 +530,8 @@ def _fmt_num(v, digits: int = 2, signed: bool = False) -> str:
     return fmt.format(f)
 
 
-def _fmt_pct(v) -> str:
-    if v is None:
-        return "—"
-    try:
-        f = float(v)
-    except (TypeError, ValueError):
-        return "—"
-    if not math.isfinite(f):
-        return "—"
-    # yoy_pct / mom_pct връщат декимали (0.025 = 2.5%)
-    return f"{f*100:+.2f}%"
+# Format helpers са вече в core.display — само _fmt_num е local за неноминализирани
+# числа (raw серийни стойности със зависим брой digits).
 
 
 # ============================================================

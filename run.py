@@ -240,27 +240,36 @@ def main_briefing(args) -> str:
 
     adapter = FredAdapter(api_key=FRED_API_KEY, base_dir=BASE_DIR)
 
+    fred_specs = [
+        {
+            "key": key,
+            "fred_id": meta["id"],
+            "release_schedule": meta["release_schedule"],
+        }
+        for key, meta in SERIES_CATALOG.items()
+        if meta.get("source") == "fred"
+    ]
+
     if args.refresh:
-        print("🔄 Refreshing FRED серии...")
-        fred_specs = [
-            {
-                "key": key,
-                "fred_id": meta["id"],
-                "release_schedule": meta["release_schedule"],
-            }
-            for key, meta in SERIES_CATALOG.items()
-            if meta.get("source") == "fred"
-        ]
+        print("🔄 Refreshing FRED серии (force, всички)...")
         results = adapter.fetch_many(fred_specs, force=True)
         ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
         print(f"  ✅ Fetched {ok}/{len(fred_specs)} серии\n")
     else:
-        cached = sum(
-            1 for key in SERIES_CATALOG
-            if adapter.get_cache_status(key).get("is_cached")
-        )
-        print(f"📦 Cache: {cached}/{len(SERIES_CATALOG)} серии налични")
-        print("   (Използвай --refresh за fresh fetch от FRED)\n")
+        # Auto-refresh: fetch_many(force=False) skip-ва fresh-те (по TTL),
+        # fetch-ва само stale-те. Тук пред-преброяваме за ясно UX-съобщение.
+        stale_specs = adapter.find_stale_specs(fred_specs)
+        fresh_count = len(fred_specs) - len(stale_specs)
+        if stale_specs:
+            print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh; "
+                  f"{len(stale_specs)} stale — auto-refresh от FRED...")
+            results = adapter.fetch_many(stale_specs, force=False)
+            ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
+            print(f"  ✅ Refreshed {ok}/{len(stale_specs)} серии "
+                  f"(--refresh за принудително презареждане на всички)\n")
+        else:
+            print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh — "
+                  f"няма нужда от refresh.\n")
 
     # Build snapshot от cache (дори след refresh — unified path)
     snapshot = adapter.get_snapshot(SERIES_CATALOG.keys())
@@ -368,6 +377,64 @@ def main_briefing(args) -> str:
 
 
 # ============================================================
+# REFRESH-ONLY MODE
+# ============================================================
+
+def main_refresh_only(args):
+    """Refresh само на FRED данни — без HTML output.
+
+    - Без --refresh: smart auto-refresh (само stale серии по TTL).
+    - С --refresh: force-refresh на всички 69 FRED серии.
+    """
+    print("\n" + "═" * 60)
+    print("  🔄  Refresh данни  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print("═" * 60 + "\n")
+
+    from sources.fred_adapter import FredAdapter
+    from catalog.series import SERIES_CATALOG
+    adapter = FredAdapter(api_key=FRED_API_KEY, base_dir=BASE_DIR)
+
+    fred_specs = [
+        {
+            "key": key,
+            "fred_id": meta["id"],
+            "release_schedule": meta["release_schedule"],
+        }
+        for key, meta in SERIES_CATALOG.items()
+        if meta.get("source") == "fred"
+    ]
+
+    if args.refresh:
+        print(f"🔄 Force-refresh: re-fetch на всички {len(fred_specs)} серии...")
+        results = adapter.fetch_many(fred_specs, force=True)
+        ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
+        failed = len(fred_specs) - ok
+        print(f"  ✅ Fetched {ok}/{len(fred_specs)} серии")
+        if failed:
+            print(f"  ⚠ Неуспешни: {failed}")
+    else:
+        stale_specs = adapter.find_stale_specs(fred_specs)
+        fresh_count = len(fred_specs) - len(stale_specs)
+        if not stale_specs:
+            print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh — "
+                  f"няма нужда от refresh.")
+            print("   (Използвай --refresh за принудителен re-fetch на всички.)")
+        else:
+            print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh; "
+                  f"{len(stale_specs)} stale — auto-refresh от FRED...")
+            results = adapter.fetch_many(stale_specs, force=False)
+            ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
+            failed = len(stale_specs) - ok
+            print(f"  ✅ Refreshed {ok}/{len(stale_specs)} серии")
+            if failed:
+                print(f"  ⚠ Неуспешни: {failed}")
+
+    print("\n✅ Done!\n")
+
+
+# ============================================================
 # CLI
 # ============================================================
 
@@ -386,6 +453,13 @@ def _parse_args():
         "--briefing",
         action="store_true",
         help="Phase 3: Генерирай Weekly Briefing + Explorer.",
+    )
+    mode.add_argument(
+        "--refresh-only",
+        dest="refresh_only",
+        action="store_true",
+        help="Само refresh на данни от FRED — без HTML output. "
+             "По default smart (само stale серии); с --refresh force-refresh на всички.",
     )
     parser.add_argument(
         "--refresh",
@@ -420,7 +494,9 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
-    if args.briefing:
+    if args.refresh_only:
+        main_refresh_only(args)
+    elif args.briefing:
         main_briefing(args)
     elif args.status:
         main_status(args)
