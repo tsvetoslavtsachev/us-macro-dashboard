@@ -40,7 +40,9 @@ CACHE_TTL_DAYS = {
 DEFAULT_CACHE_PATH = "data/fred_cache.json"
 
 # ── Retry config за FRED 5xx transient errors ────────────────
-DEFAULT_RETRY_BACKOFF = [2, 5]  # секунди между опитите
+# 3 retry-та с прогресивни delays — общо 22s максимум.
+# По-устойчиво на kratкосрочни FRED API outages.
+DEFAULT_RETRY_BACKOFF = [2, 5, 15]  # секунди между опитите
 
 # Permanent = bad request / bad ID → fail fast, без retry
 PERMANENT_ERROR_MARKERS = (
@@ -171,6 +173,10 @@ class FredAdapter:
             list(retry_backoff) if retry_backoff is not None
             else list(DEFAULT_RETRY_BACKOFF)
         )
+        # Tracker за последния fetch_many call — кои серии са fail-нали
+        # (всички retries изчерпани → fall-back към cache).
+        # Reset-ва се в началото на всеки fetch_many.
+        self._fetch_failures: list[str] = []
 
     # ─────────────────────────────────────────────────────
     # Cache I/O
@@ -257,6 +263,7 @@ class FredAdapter:
             data = self._fetch_with_retry(series_key, fred_id)
             if data is None or (hasattr(data, "empty") and data.empty):
                 warnings.warn(f"{series_key} ({fred_id}): empty response from FRED")
+                self._fetch_failures.append(series_key)
                 return self._series_from_cache(series_key)
 
             # Store in cache
@@ -267,6 +274,7 @@ class FredAdapter:
 
         except Exception as e:
             logger.error(f"{series_key} ({fred_id}): fetch failed — {e}")
+            self._fetch_failures.append(series_key)
             # Fall back to cache if available
             return self._series_from_cache(series_key)
 
@@ -281,15 +289,28 @@ class FredAdapter:
         - На 4xx / bad ID → fail fast, raise веднага
         - На unknown error → третира като transient (консервативно)
 
+        Logging политика:
+        - Success on first try → тихо.
+        - Success after retries → INFO ред със сума ("успех след N retry-та").
+        - Final failure → batched WARNING-и за всеки failed attempt + ERROR
+          за изчерпан budget. (Не се принтват retry-и докато се надяваме на success.)
+
         Raises последната грешка ако всички опити се изчерпат.
         """
         fred = self._get_fred()
         max_retries = len(self.retry_backoff)
         last_err: Optional[Exception] = None
+        retry_log: list[str] = []  # buffer — flush само при final failure
 
         for attempt in range(max_retries + 1):
             try:
-                return fred.get_series(fred_id)
+                result = fred.get_series(fred_id)
+                if retry_log:
+                    logger.info(
+                        f"{series_key} ({fred_id}): успех след "
+                        f"{len(retry_log)} retry-та"
+                    )
+                return result
             except Exception as e:
                 last_err = e
                 classification = _classify_fetch_error(e)
@@ -300,13 +321,16 @@ class FredAdapter:
                     raise
                 if attempt < max_retries:
                     wait = self.retry_backoff[attempt]
-                    logger.warning(
-                        f"{series_key} ({fred_id}): transient error, "
-                        f"retry {attempt + 1}/{max_retries} след {wait}s — {e}"
+                    retry_log.append(
+                        f"transient error, retry {attempt + 1}/{max_retries} "
+                        f"след {wait}s — {e}"
                     )
                     if wait > 0:
                         time.sleep(wait)
                 else:
+                    # Изчерпан budget — flush buffered warnings + final error
+                    for msg in retry_log:
+                        logger.warning(f"{series_key} ({fred_id}): {msg}")
                     logger.error(
                         f"{series_key} ({fred_id}): изчерпан retry budget "
                         f"({max_retries} опита) — {e}"
@@ -323,8 +347,12 @@ class FredAdapter:
     ) -> dict[str, pd.Series]:
         """Batch fetch. series_specs е list от {key, fred_id, release_schedule}.
 
-        Връща dict {series_key: pd.Series}.
+        Връща dict {series_key: pd.Series}. След извикването,
+        `last_fetch_failures()` връща ключовете, чиито fetch е fail-нал
+        (и които са върнали cache fallback).
         """
+        # Reset failure tracker at start of each batch
+        self._fetch_failures = []
         results: dict[str, pd.Series] = {}
         for spec in series_specs:
             key = spec["key"]
@@ -337,6 +365,14 @@ class FredAdapter:
     # ─────────────────────────────────────────────────────
     # Cache logic
     # ─────────────────────────────────────────────────────
+
+    def last_fetch_failures(self) -> list[str]:
+        """Връща list от series_key-та, чийто fetch е fail-нал в последния
+        `fetch_many` (всички retries изчерпани → fall-back към cache).
+
+        Empty list ако всичко е минало успешно или fetch_many още не е извикван.
+        """
+        return list(self._fetch_failures)
 
     def find_stale_specs(self, specs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """От подаден списък FRED specs връща само тези, чийто кеш е stale (TTL изтекъл).

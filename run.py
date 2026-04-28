@@ -252,9 +252,14 @@ def main_briefing(args) -> str:
 
     if args.refresh:
         print("🔄 Refreshing FRED серии (force, всички)...")
-        results = adapter.fetch_many(fred_specs, force=True)
-        ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
-        print(f"  ✅ Fetched {ok}/{len(fred_specs)} серии\n")
+        adapter.fetch_many(fred_specs, force=True)
+        failures = adapter.last_fetch_failures()
+        fresh_n = len(fred_specs) - len(failures)
+        print(f"  ✅ {fresh_n}/{len(fred_specs)} серии успешно обновени")
+        if failures:
+            print(f"  ⚠ {len(failures)} fall-back към кеш (FRED API недостъпен): "
+                  f"{', '.join(failures)}")
+        print()
     else:
         # Auto-refresh: fetch_many(force=False) skip-ва fresh-те (по TTL),
         # fetch-ва само stale-те. Тук пред-преброяваме за ясно UX-съобщение.
@@ -263,10 +268,15 @@ def main_briefing(args) -> str:
         if stale_specs:
             print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh; "
                   f"{len(stale_specs)} stale — auto-refresh от FRED...")
-            results = adapter.fetch_many(stale_specs, force=False)
-            ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
-            print(f"  ✅ Refreshed {ok}/{len(stale_specs)} серии "
-                  f"(--refresh за принудително презареждане на всички)\n")
+            adapter.fetch_many(stale_specs, force=False)
+            failures = adapter.last_fetch_failures()
+            refreshed_n = len(stale_specs) - len(failures)
+            print(f"  ✅ {refreshed_n}/{len(stale_specs)} серии успешно обновени "
+                  f"(--refresh за принудително презареждане на всички)")
+            if failures:
+                print(f"  ⚠ {len(failures)} fall-back към кеш (FRED API недостъпен): "
+                      f"{', '.join(failures)}")
+            print()
         else:
             print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh — "
                   f"няма нужда от refresh.\n")
@@ -408,12 +418,13 @@ def main_refresh_only(args):
 
     if args.refresh:
         print(f"🔄 Force-refresh: re-fetch на всички {len(fred_specs)} серии...")
-        results = adapter.fetch_many(fred_specs, force=True)
-        ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
-        failed = len(fred_specs) - ok
-        print(f"  ✅ Fetched {ok}/{len(fred_specs)} серии")
-        if failed:
-            print(f"  ⚠ Неуспешни: {failed}")
+        adapter.fetch_many(fred_specs, force=True)
+        failures = adapter.last_fetch_failures()
+        fresh_n = len(fred_specs) - len(failures)
+        print(f"  ✅ {fresh_n}/{len(fred_specs)} серии успешно обновени")
+        if failures:
+            print(f"  ⚠ {len(failures)} fall-back към кеш (FRED API недостъпен): "
+                  f"{', '.join(failures)}")
     else:
         stale_specs = adapter.find_stale_specs(fred_specs)
         fresh_count = len(fred_specs) - len(stale_specs)
@@ -424,12 +435,13 @@ def main_refresh_only(args):
         else:
             print(f"📦 Cache: {fresh_count}/{len(fred_specs)} серии fresh; "
                   f"{len(stale_specs)} stale — auto-refresh от FRED...")
-            results = adapter.fetch_many(stale_specs, force=False)
-            ok = sum(1 for s in results.values() if not getattr(s, "empty", True))
-            failed = len(stale_specs) - ok
-            print(f"  ✅ Refreshed {ok}/{len(stale_specs)} серии")
-            if failed:
-                print(f"  ⚠ Неуспешни: {failed}")
+            adapter.fetch_many(stale_specs, force=False)
+            failures = adapter.last_fetch_failures()
+            refreshed_n = len(stale_specs) - len(failures)
+            print(f"  ✅ {refreshed_n}/{len(stale_specs)} серии успешно обновени")
+            if failures:
+                print(f"  ⚠ {len(failures)} fall-back към кеш (FRED API недостъпен): "
+                      f"{', '.join(failures)}")
 
     print("\n✅ Done!\n")
 
