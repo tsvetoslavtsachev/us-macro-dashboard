@@ -561,7 +561,7 @@ def _render_analogs(bundle: AnalogBundle) -> str:
             horizons = bundle.forward.horizons
             dims = bundle.forward.dims
             # Header row
-            fw_header = "<tr><th>Измерение</th>" + "".join(f"<th>+{h}m</th>" for h in horizons) + "</tr>"
+            fw_header = "<tr><th>Измерение</th>" + "".join(f"<th class='num'>+{h}m</th>" for h in horizons) + "</tr>"
             fw_rows = []
             for d in dims:
                 label_d = DIM_LABELS_BG.get(d, d)
@@ -619,7 +619,7 @@ def _render_analogs(bundle: AnalogBundle) -> str:
     # Aggregate forward outcomes (median across analogs)
     agg_dims = bundle.forward.dims
     agg_horizons = bundle.forward.horizons
-    agg_header = "<tr><th>Измерение</th>" + "".join(f"<th>+{h}m (median)</th>" for h in agg_horizons) + "</tr>"
+    agg_header = "<tr><th>Измерение</th>" + "".join(f"<th class='num'>+{h}m (median)</th>" for h in agg_horizons) + "</tr>"
     agg_rows = []
     for d in agg_dims:
         label_d = DIM_LABELS_BG.get(d, d)
@@ -1648,7 +1648,8 @@ sup.revision-mark { color: #a06020; cursor: help; margin-left: 2px; }
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.analog-fw-table td.num {
+.analog-fw-table td.num,
+.analog-fw-table th.num {
   text-align: right;
   font-family: 'Consolas', 'Monaco', monospace;
 }
