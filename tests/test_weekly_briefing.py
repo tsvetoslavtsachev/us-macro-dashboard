@@ -248,7 +248,7 @@ class TestTooltips:
         assert 'tooltip-title' in content
         assert 'tooltip-id' in content
         assert 'tooltip-meta' in content
-        assert 'Леща:' in content  # label
+        assert 'Тема:' in content  # label
         assert 'Peer:' in content
 
     def test_tooltip_contains_name_bg_for_known_series(self, tmp_output):

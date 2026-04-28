@@ -156,7 +156,11 @@ def generate_weekly_briefing(
     prev_state = None
     if state_dir is not None:
         try:
-            prev_state = load_latest_state(state_dir=state_dir, before=today)
+            # WoW сравнение — гледаме поне 5 дни назад, за да хванем предишната
+            # календарна седмица (типично предишния понеделник).
+            prev_state = load_latest_state(
+                state_dir=state_dir, before=today, min_age_days=5
+            )
         except Exception:
             prev_state = None
     delta = compute_delta(current_state, prev_state)
@@ -297,7 +301,7 @@ def _render_executive(exec_snapshot, falsifiers=None, threshold_flags=None) -> s
   <div class="exec-grid">
     <table class="regime-table">
       <thead><tr>
-        <th>Леща</th><th>Посока</th><th>Breadth ↑</th><th>Аномалии</th>
+        <th>Тема</th><th>Посока</th><th>Breadth ↑</th><th>Аномалии</th>
       </tr></thead>
       <tbody>{"".join(lens_rows_html)}</tbody>
     </table>
@@ -363,15 +367,31 @@ def _render_delta(delta) -> str:
 </div>
 """)
 
-    # Cross-lens flips
+    # Cross-lens flips — user-friendly наименования + кратка интерпретация
     if delta.cross_lens_changes:
-        rows = "".join(
-            f"<li><code>{html.escape(c.pair_id)}</code>: "
-            f"<span class='state-from'>{html.escape(c.from_state)}</span> → "
-            f"<strong class='state-to'>{html.escape(c.to_state)}</strong></li>"
-            for c in delta.cross_lens_changes
+        from catalog.cross_lens_pairs import CROSS_LENS_PAIRS
+        pair_lookup = {p["id"]: p for p in CROSS_LENS_PAIRS}
+        rows = []
+        for c in delta.cross_lens_changes:
+            pair_meta = pair_lookup.get(c.pair_id, {})
+            pair_name = pair_meta.get("name_bg", c.pair_id)
+            from_lbl = STATE_LABEL_BG.get(c.from_state, c.from_state)
+            to_lbl = STATE_LABEL_BG.get(c.to_state, c.to_state)
+            new_interp = (pair_meta.get("interpretations") or {}).get(c.to_state, "")
+            interp_html = (
+                f" <em class='delta-interp'>— {html.escape(new_interp)}</em>"
+                if new_interp and new_interp != "—" else ""
+            )
+            rows.append(
+                f"<li><strong>{html.escape(pair_name)}</strong>: "
+                f"<span class='state-from'>{html.escape(from_lbl)}</span> → "
+                f"<strong class='state-to'>{html.escape(to_lbl)}</strong>"
+                f"{interp_html}</li>"
+            )
+        parts.append(
+            f"<div class='delta-block'><h4>Cross-lens flips</h4>"
+            f"<ul>{''.join(rows)}</ul></div>"
         )
-        parts.append(f"<div class='delta-block'><h4>Cross-lens flips</h4><ul>{rows}</ul></div>")
 
     # Breadth moves
     if delta.breadth_moves:
@@ -541,7 +561,7 @@ def _render_analogs(bundle: AnalogBundle) -> str:
             horizons = bundle.forward.horizons
             dims = bundle.forward.dims
             # Header row
-            fw_header = "<tr><th>Dim</th>" + "".join(f"<th>+{h}m</th>" for h in horizons) + "</tr>"
+            fw_header = "<tr><th>Измерение</th>" + "".join(f"<th>+{h}m</th>" for h in horizons) + "</tr>"
             fw_rows = []
             for d in dims:
                 label_d = DIM_LABELS_BG.get(d, d)
@@ -599,7 +619,7 @@ def _render_analogs(bundle: AnalogBundle) -> str:
     # Aggregate forward outcomes (median across analogs)
     agg_dims = bundle.forward.dims
     agg_horizons = bundle.forward.horizons
-    agg_header = "<tr><th>Dim</th>" + "".join(f"<th>+{h}m (median)</th>" for h in agg_horizons) + "</tr>"
+    agg_header = "<tr><th>Измерение</th>" + "".join(f"<th>+{h}m (median)</th>" for h in agg_horizons) + "</tr>"
     agg_rows = []
     for d in agg_dims:
         label_d = DIM_LABELS_BG.get(d, d)
@@ -894,14 +914,102 @@ def _render_journal(entries: list[Any]) -> str:
 def _render_footer(as_of, today) -> str:
     return f"""
 <footer class="brief-footer">
-  <p class="muted">
-    <strong>Методология:</strong> breadth (% положителна момент), divergence (intra- и cross-lens peer breadth),
-    non-consensus (tagged серии с |z|>2 или peer deviation), anomalies (raw |z|>2 cross-lens).
-    Всички изчисления са детерминистични — няма LLM нарация в този briefing.
-  </p>
-  <p class="muted">
-    <strong>Caveat:</strong> Серии с <sup>†</sup> подлежат на ревизии. Подходящо е да се изчака
-    2-3 релиза за потвърждение преди тезен избор. As_of: {html.escape(as_of or '—')} · Today: {today.isoformat()}.
+  <details class="methodology" open>
+    <summary><strong>Методология — как да четеш този briefing</strong></summary>
+
+    <h4>Breadth (% положителна момент)</h4>
+    <p class="muted">
+      <strong>Какво е:</strong> процент от сериите в peer group, чийто 1-периоден
+      momentum е положителен. Дава синтетично „накъде клони групата като цяло".
+    </p>
+    <p class="muted">
+      <strong>Пример:</strong> peer group <code>wage_dynamics</code> с 3 серии (AHE,
+      ECIWAG, AWHNONAG) — ако 2 от 3-те имат положителна 1m промяна → breadth = 67%.
+      Ако всички 3 — 100%. Ако нито една — 0%.
+    </p>
+    <p class="muted">
+      <strong>Прагове:</strong> breadth &gt; 60% → „разширяване" · breadth &lt; 40% →
+      „свиване" · между 40–60% → „смесено" · &lt;2 серии с данни → „insufficient_data".
+    </p>
+    <p class="muted">
+      <strong>За малки peer groups (3 серии)</strong>: 1 серия flip = 33pp промяна.
+      Не е грешка ако в WoW виждаш +67pp / +100pp — просто цялата група е сменила
+      посока. За peer groups с 5–7 серии промените са по-плавни.
+    </p>
+
+    <h4>Z-score</h4>
+    <p class="muted">
+      Стандартизирана отдалеченост на текущата стойност от историческата средна
+      (за прозорец от 5 години). <code>z = +2.0</code> означава „2 стандартни
+      отклонения над нормата" — настъпва ~5% от времето в нормална дистрибуция.
+      <code>|z|&gt;2</code> — флаг за „екстремна" стойност (раздел „Top Anomalies").
+    </p>
+
+    <h4>Тема блокове (Трудов пазар, Растеж, Инфлация, Ликвидност и кредит)</h4>
+    <p class="muted">
+      Всеки ред в таблицата е <strong>peer group</strong> в дадената тема:
+    </p>
+    <ul class="muted">
+      <li><code>breadth ↑</code> — % положителен 1m момент в групата (виж по-горе).</li>
+      <li><code>breadth |z|&gt;2</code> — % серии в групата с екстремен z-score.
+          Идентифицира чисто-аномални peer groups.</li>
+      <li><code>данни</code> — налични серии / каталожни членове (напр. 3/3 = пълно
+          покритие, 4/5 = 1 серия липсва в snapshot-а).</li>
+      <li><code>посока</code> — derived от breadth ↑ (виж праговете по-горе).</li>
+      <li><code>екстремни членове</code> — линкове към exploreр-а за серии с |z|&gt;2.</li>
+    </ul>
+
+    <h4>Cross-Lens Divergence — двойките</h4>
+    <p class="muted">
+      Шест икономически тези, всяка съпоставя breadth между две slot-а (групи peer_groups).
+      Възможни състояния:
+    </p>
+    <ul class="muted">
+      <li><strong>↑↑ и двете нагоре</strong> (<code>both_up</code>) — A и B растат заедно.</li>
+      <li><strong>↓↓ и двете надолу</strong> (<code>both_down</code>) — A и B спадат заедно.</li>
+      <li><strong>↑↓ A нагоре / B надолу</strong> (<code>a_up_b_down</code>) — divergence.</li>
+      <li><strong>↓↑ A надолу / B нагоре</strong> (<code>a_down_b_up</code>) — divergence.</li>
+      <li><strong>⇄ преход</strong> (<code>transition</code>) — breadth-овете не пресичат
+          ясно праговете 60/40% → смесени сигнали, изчакваме яснота.</li>
+      <li><strong>недостатъчно данни</strong> — една от групите е под минималния праг.</li>
+    </ul>
+    <p class="muted">
+      Под всяка двойка има конкретна интерпретация на текущото състояние
+      (от каталога <code>cross_lens_pairs.py</code>). „Invert" флагът в slot-а
+      означава, че breadth се обръща (напр. unemployment ↑ = labor weakening, инвертирано
+      на „labor tightness").
+    </p>
+
+    <h4>Top Anomalies</h4>
+    <p class="muted">
+      Серии с <code>|z|&gt;2</code> сортирани по абсолютна сила. Колоните „стойност"
+      и „Δ" са в типично-подходящи единици: <strong>bps</strong> за rate-нива
+      (BREAKEVEN, UST, OAS, FED_FUNDS), <strong>абсолютна делта</strong> за signed
+      индекси (NFCI, CFNAI, UMCSENT), <strong>%</strong> за price levels (CPI,
+      payrolls). Това избягва подвеждащи % промени за rate-нива близки до нула.
+    </p>
+
+    <h4>Week-over-Week (WoW)</h4>
+    <p class="muted">
+      Сравнение с briefing snapshot от <strong>≥5 дни назад</strong> — типично
+      хваща предишната календарна седмица. Ако пускаш briefing вторник, ще видиш
+      промени от предходния понеделник (или най-близкия по-стар запис). Snapshot-овете
+      се пазят в <code>data/state/briefing_YYYY-MM-DD.json</code>.
+    </p>
+
+    <h4>Non-consensus</h4>
+    <p class="muted">
+      Серии маркирани с tag <code>non_consensus</code> в каталога, които към момента
+      имат <code>|z|&gt;2</code> ИЛИ голяма дистанция от breadth-а на peer group-а
+      (deviation).Mainstream narrative-ът обикновено им обръща по-малко внимание.
+    </p>
+  </details>
+
+  <p class="muted brief-meta">
+    Всички изчисления са детерминистични — няма LLM нарация в самия briefing.
+    <strong>Caveat:</strong> серии с <sup>†</sup> подлежат на ревизии (изчакай
+    2–3 релиза за потвърждение преди тезен избор).
+    As_of: {html.escape(as_of or '—')} · Today: {today.isoformat()}.
   </p>
 </footer>
 """
@@ -1001,7 +1109,7 @@ def render_series_ref(
     # Meta редове
     meta_html_parts: list[str] = [
         f'<span class="tooltip-meta">'
-        f'<span class="tooltip-meta-label">Леща:</span> {html.escape(lenses) or "—"}</span>',
+        f'<span class="tooltip-meta-label">Тема:</span> {html.escape(lenses) or "—"}</span>',
         f'<span class="tooltip-meta">'
         f'<span class="tooltip-meta-label">Peer:</span> {html.escape(peer_group) or "—"}</span>',
     ]

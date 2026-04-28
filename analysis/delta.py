@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, asdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -315,13 +315,20 @@ def save_state(
 def load_latest_state(
     state_dir: str = STATE_DIR_DEFAULT,
     before: Optional[date] = None,
+    min_age_days: int = 0,
 ) -> Optional[BriefingStateSnapshot]:
-    """Зарежда най-скорошния snapshot с generated_on < ``before``.
+    """Зарежда най-скорошния snapshot с generated_on ≤ ``before - min_age_days``.
+
+    За седмично сравнение: pass ``before=today, min_age_days=5``. Това гарантира,
+    че сравняваме с поне 5 дни стар snapshot — типично хваща предишния понеделник
+    ако се пуска от вторник насам, или ден през предходната седмица.
 
     Args:
         state_dir: директория с briefing_*.json файлове.
-        before: търсим snapshots с generated_on < before. Ако None — търсим всички
-                и връщаме последния (удобно за self-test).
+        before: търсим snapshots с generated_on < (before - min_age_days).
+                Ако None — търсим всички и връщаме последния (удобно за self-test).
+        min_age_days: минимална възраст в дни на snapshot спрямо ``before``
+                (default 0 = обратно-съвместимо поведение).
 
     Returns:
         BriefingStateSnapshot или None ако няма кандидат.
@@ -329,6 +336,10 @@ def load_latest_state(
     in_dir = Path(state_dir)
     if not in_dir.exists():
         return None
+
+    cutoff = None
+    if before is not None:
+        cutoff = before - timedelta(days=max(min_age_days, 0))
 
     candidates: list[tuple[date, Path]] = []
     for p in in_dir.glob("briefing_*.json"):
@@ -339,7 +350,7 @@ def load_latest_state(
             d = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
             continue
-        if before is not None and d >= before:
+        if cutoff is not None and d >= cutoff:
             continue
         candidates.append((d, p))
 

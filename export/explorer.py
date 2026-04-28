@@ -231,7 +231,7 @@ def _render_series_section(series_key: str, snapshot) -> str:
     <h3><code>{key_esc}</code> <span class="series-card-title">{name_bg}</span></h3>
     <div class="series-card-sub">
       <span class="series-card-sub-item">{fred_id} · {source} · {region}</span>
-      <span class="series-card-sub-item">Леща: {lenses}</span>
+      <span class="series-card-sub-item">Тема: {lenses}</span>
       <span class="series-card-sub-item">Peer: {peer_group}</span>
       {f'<span class="series-card-sub-item en">{name_en}</span>' if name_en else ''}
     </div>
@@ -276,7 +276,7 @@ def _render_metadata_panel(series_key: str, series: pd.Series) -> str:
     fields.append(row("Източник", f'{html.escape((meta.get("source") or "").upper())}'))
     fields.append(row("FRED / ID", f'<code>{html.escape(meta.get("id", ""))}</code>'))
     fields.append(row("Регион", html.escape(meta.get("region", ""))))
-    fields.append(row("Леща(и)", html.escape(" / ".join(meta.get("lens", [])))))
+    fields.append(row("Тема(и)", html.escape(" / ".join(meta.get("lens", [])))))
     fields.append(row("Peer group", html.escape(meta.get("peer_group", ""))))
 
     tags = meta.get("tags") or []

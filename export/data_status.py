@@ -499,7 +499,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     <section>
       <h2>📊 Всички серии</h2>
       <div class="filters">
-        <label>Леща
+        <label>Тема
           <select id="filter-lens">
             <option value="">Всички</option>
             <option value="labor">Labor</option>
