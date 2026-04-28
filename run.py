@@ -447,6 +447,98 @@ def main_refresh_only(args):
 
 
 # ============================================================
+# EXPORT-CONTEXT MODE (Claude-friendly Markdown)
+# ============================================================
+
+def main_export_context(args) -> str:
+    """Генерира briefing_context_YYYY-MM-DD.md за LLM анализ.
+
+    Чете snapshot от cache (или fetch-ва с --refresh), изчислява всички
+    analytical layers (breadth, cross-lens, anomalies) и експортира
+    Markdown с пълен контекст. Не генерира HTML.
+    """
+    from datetime import date as date_cls
+    from sources.fred_adapter import FredAdapter
+    from catalog.series import SERIES_CATALOG
+    from analysis.breadth import compute_lens_breadth
+    from analysis.divergence import compute_cross_lens_divergence
+    from analysis.anomaly import compute_anomalies
+    from export.briefing_context import generate_briefing_context
+
+    today = date_cls.today()
+
+    print("\n" + "═" * 60)
+    print("  📝  Export Briefing Context (.md)  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print("═" * 60 + "\n")
+
+    adapter = FredAdapter(api_key=FRED_API_KEY, base_dir=BASE_DIR)
+
+    fred_specs = [
+        {
+            "key": key,
+            "fred_id": meta["id"],
+            "release_schedule": meta["release_schedule"],
+        }
+        for key, meta in SERIES_CATALOG.items()
+        if meta.get("source") == "fred"
+    ]
+
+    if args.refresh:
+        print("🔄 Refreshing FRED серии (force, всички)...")
+        adapter.fetch_many(fred_specs, force=True)
+        failures = adapter.last_fetch_failures()
+        fresh_n = len(fred_specs) - len(failures)
+        print(f"  ✅ {fresh_n}/{len(fred_specs)} серии успешно обновени")
+        if failures:
+            print(f"  ⚠ {len(failures)} fall-back към кеш: {', '.join(failures)}")
+        print()
+    else:
+        stale_specs = adapter.find_stale_specs(fred_specs)
+        if stale_specs:
+            print(f"📦 Auto-refresh: {len(stale_specs)} stale серии...")
+            adapter.fetch_many(stale_specs, force=False)
+            failures = adapter.last_fetch_failures()
+            refreshed_n = len(stale_specs) - len(failures)
+            print(f"  ✅ {refreshed_n}/{len(stale_specs)} обновени\n")
+        else:
+            print(f"📦 Cache fresh — пропускам refresh.\n")
+
+    # Build snapshot
+    snapshot = adapter.get_snapshot(SERIES_CATALOG.keys())
+    print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
+
+    # Compute analysis layers
+    print("🧮 Изчислявам breadth, cross-lens, anomalies...")
+    lens_reports = {
+        lens: compute_lens_breadth(lens, snapshot) for lens in
+        ["labor", "growth", "inflation", "liquidity"]
+    }
+    cross_report = compute_cross_lens_divergence(snapshot)
+    anomaly_report = compute_anomalies(snapshot, z_threshold=2.0, top_n=10, lookback_years=5)
+
+    # Generate markdown
+    output_dir = BASE_DIR / OUTPUT_DIR
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print("📝 Генерирам briefing context...")
+    md_path = generate_briefing_context(
+        snapshot=snapshot,
+        lens_reports=lens_reports,
+        cross_report=cross_report,
+        anomaly_report=anomaly_report,
+        today=today,
+        output_path=output_dir,
+    )
+    size_kb = Path(md_path).stat().st_size / 1024
+    print(f"  ✅ {Path(md_path).name} ({size_kb:.1f} KB)")
+    print(f"\n   Path: {md_path}")
+    print("\n💡 Отвори файла или го закачи към Claude чат за дълбок анализ.\n")
+    print("✅ Done!\n")
+    return md_path
+
+
+# ============================================================
 # CLI
 # ============================================================
 
@@ -472,6 +564,14 @@ def _parse_args():
         action="store_true",
         help="Само refresh на данни от FRED — без HTML output. "
              "По default smart (само stale серии); с --refresh force-refresh на всички.",
+    )
+    mode.add_argument(
+        "--export-context",
+        dest="export_context",
+        action="store_true",
+        help="Експортира briefing_context_YYYY-MM-DD.md за LLM (Claude) анализ. "
+             "Markdown файл с пълен analytical state + per-series fact cards "
+             "(5y range, percentile, последни readings, narrative_hint).",
     )
     parser.add_argument(
         "--refresh",
@@ -508,6 +608,8 @@ if __name__ == "__main__":
     args = _parse_args()
     if args.refresh_only:
         main_refresh_only(args)
+    elif args.export_context:
+        main_export_context(args)
     elif args.briefing:
         main_briefing(args)
     elif args.status:
