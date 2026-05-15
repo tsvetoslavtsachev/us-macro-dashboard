@@ -154,7 +154,26 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     intra_divs = {}
     for lens in LENSES:
         report = compute_intra_lens_divergence(lens, snapshot)
-        intra_divs[lens] = [d.to_dict() for d in report.divergences]
+        intra_divs[lens] = []
+        for d in report.divergences:
+            base = d.to_dict()
+            diff = base.get("diff")
+            if diff is None:
+                state = "transition"
+            elif diff > 0.2:
+                state = "a_up_b_down"
+            elif diff < -0.2:
+                state = "a_down_b_up"
+            else:
+                state = "transition"
+            base.update({
+                "name_bg": f"{d.group_a} vs {d.group_b}",
+                "pair_id": f"{lens}__{d.group_a}__vs__{d.group_b}",
+                "slot_a_label": d.group_a,
+                "slot_b_label": d.group_b,
+                "state": state,
+            })
+            intra_divs[lens].append(base)
 
     # ── Per-lens summary ────────────────────────────────────────────────────
     lenses_out = {}
