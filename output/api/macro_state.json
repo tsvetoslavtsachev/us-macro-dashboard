@@ -1,16 +1,16 @@
 {
   "region": "US",
-  "as_of_date": "2026-05-16",
-  "generated_at": "2026-05-15T22:21:52.622234Z",
+  "as_of_date": "2026-05-15",
+  "generated_at": "2026-05-15T22:30:49.629987Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
     "css_class": "regime-stag",
-    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Inflation — breadth 76% (разширяване), 12 аномалии, 11 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: M2, C_AND_I_LOANS, CPI_SHELTER (нови 5-годишни екстремуми).",
+    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Inflation — breadth 86% (разширяване), 12 аномалии, 11 нови екстремума. Expectations също нагоре — de-anchoring в ход, рискът ескалира. За наблюдение следващия релиз: M2, C_AND_I_LOANS, CPI_SHELTER (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: M2 z=+2.76 · NEW-5Y-MAX",
       "13 нови екстремуми в top-15 (lookback 5г.)",
-      "Активни двойки: Stagflation test=both_up; Growth × Labor=a_up_b_down; Inflation anchoring=a_up_b_down"
+      "Активни двойки: Stagflation test=both_up; Growth × Labor=a_up_b_down; Inflation anchoring=both_up"
     ],
     "primary_driver": "stagflation_test"
   },
@@ -133,9 +133,9 @@
       ]
     },
     "growth": {
-      "score": 42.7,
+      "score": 46.7,
       "direction": "mixed",
-      "breadth_pct": 42.699999999999996,
+      "breadth_pct": 46.7,
       "anomalies_count": 6,
       "new_extreme_count": 4,
       "intra_divergences": [
@@ -144,9 +144,18 @@
           "group_a": "consumer_sentiment",
           "group_b": "hard_activity",
           "breadth_a": 0.0,
-          "breadth_b": 0.8,
-          "diff": -0.8,
-          "interpretation": "hard_activity е по-силна (80%) отколкото consumer_sentiment (0%) — разминаване +80%."
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "hard_activity е по-силна (100%) отколкото consumer_sentiment (0%) — разминаване +100%."
+        },
+        {
+          "lens": "growth",
+          "group_a": "business_sentiment",
+          "group_b": "hard_activity",
+          "breadth_a": 0.333,
+          "breadth_b": 1.0,
+          "diff": -0.667,
+          "interpretation": "hard_activity е по-силна (100%) отколкото business_sentiment (33%) — разминаване +67%."
         },
         {
           "lens": "growth",
@@ -168,19 +177,28 @@
         },
         {
           "lens": "growth",
-          "group_a": "business_sentiment",
-          "group_b": "hard_activity",
-          "breadth_a": 0.333,
-          "breadth_b": 0.8,
-          "diff": -0.467,
-          "interpretation": "hard_activity е по-силна (80%) отколкото business_sentiment (33%) — разминаване +47%."
+          "group_a": "hard_activity",
+          "group_b": "leading",
+          "breadth_a": 1.0,
+          "breadth_b": 0.5,
+          "diff": 0.5,
+          "interpretation": "hard_activity е по-силна (100%) отколкото leading (50%) — разминаване +50%."
+        },
+        {
+          "lens": "growth",
+          "group_a": "hard_activity",
+          "group_b": "sectoral_employment",
+          "breadth_a": 1.0,
+          "breadth_b": 0.5,
+          "diff": 0.5,
+          "interpretation": "hard_activity е по-силна (100%) отколкото sectoral_employment (50%) — разминаване +50%."
         }
       ]
     },
     "inflation": {
-      "score": 76.2,
+      "score": 85.7,
       "direction": "expanding",
-      "breadth_pct": 76.2,
+      "breadth_pct": 85.7,
       "anomalies_count": 12,
       "new_extreme_count": 11,
       "intra_divergences": [
@@ -192,6 +210,15 @@
           "breadth_b": 0.0,
           "diff": 1.0,
           "interpretation": "core_measures е по-силна (100%) отколкото labor_share (0%) — разминаване +100%."
+        },
+        {
+          "lens": "inflation",
+          "group_a": "expectations",
+          "group_b": "labor_share",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "expectations е по-силна (100%) отколкото labor_share (0%) — разминаване +100%."
         },
         {
           "lens": "inflation",
@@ -228,51 +255,6 @@
           "breadth_b": 1.0,
           "diff": -1.0,
           "interpretation": "wage_dynamics е по-силна (100%) отколкото labor_share (0%) — разминаване +100%."
-        },
-        {
-          "lens": "inflation",
-          "group_a": "core_measures",
-          "group_b": "expectations",
-          "breadth_a": 1.0,
-          "breadth_b": 0.333,
-          "diff": 0.667,
-          "interpretation": "core_measures е по-силна (100%) отколкото expectations (33%) — разминаване +67%."
-        },
-        {
-          "lens": "inflation",
-          "group_a": "expectations",
-          "group_b": "goods_services",
-          "breadth_a": 0.333,
-          "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "goods_services е по-силна (100%) отколкото expectations (33%) — разминаване +67%."
-        },
-        {
-          "lens": "inflation",
-          "group_a": "expectations",
-          "group_b": "headline_measures",
-          "breadth_a": 0.333,
-          "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "headline_measures е по-силна (100%) отколкото expectations (33%) — разминаване +67%."
-        },
-        {
-          "lens": "inflation",
-          "group_a": "expectations",
-          "group_b": "sticky_measures",
-          "breadth_a": 0.333,
-          "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "sticky_measures е по-силна (100%) отколкото expectations (33%) — разминаване +67%."
-        },
-        {
-          "lens": "inflation",
-          "group_a": "expectations",
-          "group_b": "wage_dynamics",
-          "breadth_a": 0.333,
-          "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "wage_dynamics е по-силна (100%) отколкото expectations (33%) — разминаване +67%."
         }
       ]
     },
@@ -409,10 +391,10 @@
         "growth"
       ],
       "peer_group": "banking_credit",
-      "z_score": 2.529,
+      "z_score": 2.564,
       "direction": "up",
-      "current_value": 2827.9137,
-      "last_date": "2026-03-01",
+      "current_value": 2865.2666,
+      "last_date": "2026-04-01",
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Бизнес заемане от банки. Water сигнал за capex intentions + credit supply. YoY crash често предхожда рецесия."
@@ -559,19 +541,19 @@
       "interpretation": "Activity hot, но claims rise — early labor crack (watchlist).",
       "slot_a_label": "Hard activity",
       "slot_b_label": "Labor market (claims inverted)",
-      "breadth_a": 0.8,
+      "breadth_a": 1.0,
       "breadth_b": 0.0
     },
     {
       "pair_id": "inflation_anchoring",
       "name_bg": "Realized CPI × Expectations",
       "question_bg": "Дали expectations следват realized inflation, или стоят anchored?",
-      "state": "a_up_b_down",
-      "interpretation": "Anchored — realized hot, expectations stable. Credibility holds.",
+      "state": "both_up",
+      "interpretation": "De-anchoring in progress — expectations следват realized up.",
       "slot_a_label": "Realized inflation",
       "slot_b_label": "Inflation expectations",
       "breadth_a": 1.0,
-      "breadth_b": 0.333
+      "breadth_b": 1.0
     },
     {
       "pair_id": "credit_policy_transmission",
@@ -593,18 +575,18 @@
       "slot_a_label": "Consumer sentiment",
       "slot_b_label": "Hard activity",
       "breadth_a": 0.0,
-      "breadth_b": 0.8
+      "breadth_b": 1.0
     },
     {
       "pair_id": "model_vs_market",
       "name_bg": "Model-implied × Market-implied inflation",
       "question_bg": "Дали underlying persistence и market pricing-а са съгласни за инфлацията?",
-      "state": "a_up_b_down",
-      "interpretation": "Модел persistent, пазар разчита на disinflation — contrarian hawkish (моделът обикновено лидера).",
+      "state": "both_up",
+      "interpretation": "Съгласие — underlying persistent + пазар pricing-ва inflation. Fed зад кривата.",
       "slot_a_label": "Модел (sticky inflation)",
       "slot_b_label": "Пазар (breakevens + survey)",
       "breadth_a": 1.0,
-      "breadth_b": 0.333
+      "breadth_b": 1.0
     }
   ],
   "non_consensus_highlights": [
@@ -617,7 +599,7 @@
       ],
       "signal_strength": "medium",
       "percentile": null,
-      "z_score": 2.529,
+      "z_score": 2.564,
       "direction": "insufficient"
     },
     {
