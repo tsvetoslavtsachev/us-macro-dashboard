@@ -3,7 +3,10 @@
 *.key
 
 # ─── Generated artifacts ────────────────────────────────────────────────────
-output/
+output/*
+!output/api/
+output/api/*
+!output/api/*.json
 data/cache.json
 data/cache.json.bak
 

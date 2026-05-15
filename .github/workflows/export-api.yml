@@ -1,0 +1,51 @@
+name: Export API JSON (Weekly)
+
+# Изпълнява се всяка събота в 07:00 UTC (09:00 Sofia/EET)
+# Може да се стартира и ръчно от GitHub UI: Actions → Export API JSON → Run workflow
+on:
+  schedule:
+    - cron: '0 7 * * 6'
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: 'Force-refresh всички FRED серии (игнорира кеш)'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  export-api:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Export API JSON
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.refresh }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            python export_api.py --refresh --years 7
+          else
+            python export_api.py --years 7
+          fi
+
+      - name: Commit and push updated API files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/api/macro_state.json output/api/series_data.json
+          git diff --cached --quiet || git commit -m "chore: update API JSON $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

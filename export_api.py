@@ -222,9 +222,9 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             "name_bg": SERIES_CATALOG.get(r.series_key, {}).get("name_bg", r.series_key),
             "lens": SERIES_CATALOG.get(r.series_key, {}).get("lens", []),
             "signal_strength": r.signal_strength,
-            "percentile": _clean(r.percentile),
+            "percentile": _clean(getattr(r, "percentile", None)),
             "z_score": _clean(r.z_score),
-            "direction": r.direction,
+            "direction": getattr(r, "direction", None) or getattr(r, "peer_direction", None),
         })
 
     return _clean_dict({
