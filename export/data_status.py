@@ -162,6 +162,31 @@ def render_html(rows: list[dict[str, Any]], today: Optional[date] = None) -> str
         "no_data":            sum(1 for r in rows if r["status"] == "no_data"),
     }
 
+    # Stale-fetch banner: ако повечето серии не са fetch-вани скоро,
+    # значи fetch е fail-нал тихо (липсващ API ключ, мрежа, FRED downtime).
+    # Без този banner потребителят гледа стари данни без да знае.
+    fetch_dates: list[date] = []
+    for r in rows:
+        lf = r.get("last_fetched")
+        if lf and lf != "—":
+            try:
+                fd = datetime.fromisoformat(lf).date()
+                fetch_dates.append(fd)
+            except ValueError:
+                pass
+    stale_banner_html = ""
+    if fetch_dates:
+        max_fetch_age = max((today - fd).days for fd in fetch_dates)
+        n_stale_fetch = sum(1 for fd in fetch_dates if (today - fd).days > 7)
+        n_total_fetch = len(fetch_dates)
+        if max_fetch_age > 7 and n_stale_fetch / n_total_fetch > 0.5:
+            stale_banner_html = (
+                '<div class="stale-fetch-banner">'
+                f'⚠️ ВНИМАНИЕ: {n_stale_fetch}/{n_total_fetch} серии не са обновявани от {max_fetch_age} дни. '
+                'Пусни <code>python run.py --refresh-only</code> или провери дали FRED ключът е валиден.'
+                '</div>'
+            )
+
     # Recent releases: серии с last_observation в последните 7 дни
     week_ago = today - timedelta(days=7)
     recent = []
@@ -194,6 +219,7 @@ def render_html(rows: list[dict[str, Any]], today: Optional[date] = None) -> str
         recent_html=recent_html,
         rows_json=rows_json,
         known_delays_html=_render_known_delays(),
+        stale_banner_html=stale_banner_html,
     )
 
 
@@ -456,6 +482,13 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   .muted {{ color: #a0aec0; font-size: 12px; padding: 12px; text-align: center; }}
 
   footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #a0aec0; font-size: 12px; text-align: center; }}
+
+  .stale-fetch-banner {{
+    background: #fff3cd; border: 1px solid #f0c674; border-left: 4px solid #d97706;
+    color: #7c4a03; padding: 14px 18px; border-radius: 6px;
+    margin-bottom: 20px; font-size: 14px; line-height: 1.5;
+  }}
+  .stale-fetch-banner code {{ background: rgba(0,0,0,0.08); padding: 1px 6px; border-radius: 3px; font-family: 'Consolas', 'Monaco', monospace; }}
 </style>
 </head>
 <body>
@@ -464,6 +497,8 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
       <h1>Data Status Screen</h1>
       <p class="subtitle">{today} · econ_v2 · The Economist's Lens</p>
     </header>
+
+    {stale_banner_html}
 
     <!-- Summary -->
     <div class="summary-grid">

@@ -37,9 +37,9 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
           if [ "${{ github.event.inputs.refresh }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
-            python export_api.py --refresh --years 7
+            python export_api.py --refresh --years 10
           else
-            python export_api.py --years 7
+            python export_api.py --years 10
           fi
 
       - name: Commit and push updated API files

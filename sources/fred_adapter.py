@@ -225,6 +225,20 @@ class FredAdapter:
 
     def _get_fred(self):
         if self._fred_client is None:
+            if not self.api_key or not self.api_key.strip():
+                raise RuntimeError(
+                    "\n"
+                    "════════════════════════════════════════════════════════════\n"
+                    "  ❌ FRED_API_KEY липсва или е празен\n"
+                    "════════════════════════════════════════════════════════════\n"
+                    "  Без ключ FRED fetch ще fail-не тихо и кешът ще остане стар.\n"
+                    "\n"
+                    "  Решение:\n"
+                    "    1. Създай .env в корена на проекта (виж .env.example)\n"
+                    "    2. Сложи: FRED_API_KEY=твоят_ключ\n"
+                    "    3. Регистрация: https://fred.stlouisfed.org/docs/api/api_key.html\n"
+                    "════════════════════════════════════════════════════════════"
+                )
             try:
                 from fredapi import Fred
             except ImportError:
@@ -360,6 +374,20 @@ class FredAdapter:
             schedule = spec.get("release_schedule", "monthly")
             results[key] = self.fetch(key, fred_id, schedule, force=force)
         self.save_cache()
+        total = len(series_specs)
+        n_failed = len(self._fetch_failures)
+        if total > 0 and n_failed / total >= 0.30:
+            print(
+                "\n"
+                "════════════════════════════════════════════════════════════\n"
+                f"  ⚠️  ВНИМАНИЕ: {n_failed}/{total} серии fail-наха при fetch\n"
+                "════════════════════════════════════════════════════════════\n"
+                "  Резултатите идват от стария кеш — НЕ са актуални.\n"
+                "  Провери: FRED ключ, мрежа, FRED API статус.\n"
+                f"  Failed keys: {', '.join(self._fetch_failures[:10])}"
+                + (f" (+{n_failed - 10} още)" if n_failed > 10 else "") + "\n"
+                "════════════════════════════════════════════════════════════"
+            )
         return results
 
     # ─────────────────────────────────────────────────────

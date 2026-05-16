@@ -290,29 +290,54 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
         lens_list = meta.get("lens", [])
         primary_lens = lens_list[0] if lens_list else "other"
 
-        # Последна стойност и промяна
-        latest_val = float(filtered.iloc[-1])
-        latest_date = str(filtered.index[-1].date())
-
-        # YoY промяна
         kind = change_kind(series_id, meta)
-        try:
-            changes = compute_change(filtered, kind, periods=12)
-            yoy_val = float(changes.iloc[-1]) if not changes.empty and not pd.isna(changes.iloc[-1]) else None
-        except Exception:
-            yoy_val = None
-
-        # Форматиране на последна стойност
         transform = meta.get("transform", "level")
         is_rate = meta.get("is_rate", False)
 
-        # Данни за графиката — dates и values
-        dates = [str(d.date()) for d in filtered.index]
-        values = [_clean(v) for v in filtered.values]
+        # Прилагаме transform: за nominalно растящи серии (PAYEMS, retail_sales, ...)
+        # каталогът декларира transform=yoy_pct → графиката и percentile се правят
+        # върху YoY % промяната, не върху суровото ниво. Иначе percentile на ниво
+        # винаги клони към 100 за растящи серии.
+        if transform == "yoy_pct":
+            chart_periods = 12
+        elif transform == "qoq_pct":
+            chart_periods = 3
+        else:
+            chart_periods = None
 
-        # Score (percentile rank) за текущата стойност
-        history = raw_series[raw_series.index >= pd.Timestamp(HISTORY_START)].dropna()
-        score_data = score_series(raw_series, history_start=HISTORY_START, name=series_id)
+        if chart_periods is not None:
+            try:
+                display_series = compute_change(raw_series, "percent", periods=chart_periods).dropna()
+            except Exception:
+                display_series = raw_series
+        else:
+            display_series = raw_series
+
+        display_filtered = display_series[display_series.index >= cutoff].dropna()
+        if display_filtered.empty:
+            continue
+
+        latest_val = float(display_filtered.iloc[-1])
+        latest_date = str(display_filtered.index[-1].date())
+
+        # yoy_change: за series които вече са трансформирани (YoY/QoQ), полето
+        # е излишно — стойността сама по себе си е процентна промяна.
+        if chart_periods is not None:
+            yoy_val = None
+        else:
+            try:
+                changes = compute_change(filtered, kind, periods=12)
+                yoy_val = float(changes.iloc[-1]) if not changes.empty and not pd.isna(changes.iloc[-1]) else None
+            except Exception:
+                yoy_val = None
+
+        # Данни за графиката
+        dates = [str(d.date()) for d in display_filtered.index]
+        values = [_clean(v) for v in display_filtered.values]
+
+        # Score: percentile на ТРАНСФОРМИРАНАТА серия спрямо нейната пълна
+        # история (HISTORY_START). За level серии — както досега.
+        score_data = score_series(display_series, history_start=HISTORY_START, name=series_id)
 
         series_out[series_id] = {
             "meta": {

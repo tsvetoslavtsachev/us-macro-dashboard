@@ -1,7 +1,11 @@
 {
   "region": "US",
   "as_of_date": "2026-05-16",
+<<<<<<< Updated upstream
   "generated_at": "2026-05-16T08:51:00.604181Z",
+=======
+  "generated_at": "2026-05-16T11:22:42.152050Z",
+>>>>>>> Stashed changes
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
