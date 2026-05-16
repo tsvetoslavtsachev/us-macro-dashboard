@@ -50,21 +50,34 @@ LENSES = ["labor", "growth", "inflation", "liquidity"]
 # Избрани по важност за всяка леща
 CHART_SERIES = {
     "labor": [
-        "UNRATE", "U6RATE", "PAYEMS", "ICSA", "JTSJOL",
-        "JTSQUR", "JTSLDL", "EMRATIO", "CIVPART", "AHE",
+        # Headline / широки
+        "UNRATE", "U6RATE", "EMRATIO", "CIVPART", "UEMPMEAN",
+        "PAYEMS", "USPRIV",
+        # Sectoral employment (ранни сигнали)
+        "MANEMP", "USCONS", "TRUCK_EMP", "TEMPHELPS",
+        "USINFO", "PROF_TECH_SERV",
+        # Заявки за безработица / JOLTS
+        "ICSA", "CCSA", "JTSJOL", "JTSQUR", "JTSLDL",
+        # Заплати / часове
+        "AHE", "ECIWAG", "AWHAETP",
     ],
     "inflation": [
         "CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE",
-        "PPIFIS", "CPI_SHELTER", "CPI_SERVICES", "CPI_GOODS",
+        "PPIFIS", "PPICORE",
+        "CPI_SHELTER", "CPI_SERVICES", "CPI_GOODS",
+        "STICKY_CPI", "MEDIAN_CPI", "TRIMMED_MEAN_CPI",
         "BREAKEVEN_10Y", "MICH_INFL_1Y",
     ],
     "growth": [
-        "INDPRO", "RSAFS", "UMCSENT", "CFNAIMA3",
-        "PHILLY_FED", "PSAVERT",
+        "INDPRO", "RSXFS", "DGORDER",
+        "UMCSENT", "CFNAIMA3", "PHILLY_FED", "PSAVERT",
     ],
     "liquidity": [
-        "FED_FUNDS", "UST_2Y", "UST_10Y", "YC_10Y2Y",
-        "HY_OAS", "IG_OAS", "NFCI", "M2", "CC_DELINQUENCY",
+        "FED_FUNDS", "SOFR",
+        "UST_2Y", "UST_10Y", "YC_10Y2Y",
+        "HY_OAS", "IG_OAS", "NFCI", "STLFSI",
+        "M2", "FED_BS", "TOTAL_RESERVES",
+        "C_AND_I_LOANS", "CC_DELINQUENCY",
     ],
     "housing": [
         "PERMIT", "HOUST",
