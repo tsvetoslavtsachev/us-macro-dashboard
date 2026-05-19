@@ -17,7 +17,7 @@ from typing import Any
 # ALLOWED VALUES (за validation)
 # ============================================================
 
-ALLOWED_SOURCES = {"fred", "eurostat", "pending"}  # "pending" = Phase 3+ integration
+ALLOWED_SOURCES = {"fred", "eurostat", "external", "pending"}  # "external" = scraped + Bloomberg backfill
 ALLOWED_REGIONS = {"US", "EU", "GLOBAL"}
 ALLOWED_LENSES = {"labor", "growth", "inflation", "liquidity", "housing"}
 ALLOWED_TRANSFORMS = {"level", "yoy_pct", "mom_pct", "z_score", "first_diff"}
@@ -1307,6 +1307,84 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "typical_release": "after_quarter_end_45_days",
         "revision_prone": False,
         "narrative_hint": "Consumer credit stress. Вдигането предхожда labor market weakness. След 2022 ускорена тенденция нагоре.",
+    },
+
+    # ═══════════════════════════════════════════════════════
+    # EXTERNAL INDICATORS — ISM + Conference Board
+    # ═══════════════════════════════════════════════════════
+    # Не са на FRED freely. Forward updates: scraped през Firecrawl.
+    # Historical backfill: Bloomberg → scripts/import_bloomberg.py.
+    # Cache live в `data/ism_cache.json` и `data/confboard_cache.json`.
+    # Зареждат се в snapshot чрез sources/external_loader.py.
+    # ═══════════════════════════════════════════════════════
+
+    "ISM_MFG_PMI": {
+        "source": "external",
+        "id": "manufacturing_pmi",                  # cache key
+        "cache_file": "data/ism_cache.json",
+        "region": "US",
+        "name_bg": "ISM Manufacturing PMI",
+        "name_en": "ISM Manufacturing PMI",
+        "lens": ["growth"],
+        "peer_group": "diffusion_indices",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1948-05-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_business_day",
+        "revision_prone": True,
+        "narrative_hint": "Diffusion index 0-100. 50 = expansion/contraction граница. <47.5 = типично рецесия. Headline + 10 sub-indices (Prices, Employment, New Orders ключови).",
+    },
+    "ISM_SVCS_PMI": {
+        "source": "external",
+        "id": "services_pmi",
+        "cache_file": "data/ism_cache.json",
+        "region": "US",
+        "name_bg": "ISM Services PMI",
+        "name_en": "ISM Services PMI",
+        "lens": ["growth"],
+        "peer_group": "diffusion_indices",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1997-07-01",
+        "release_schedule": "monthly",
+        "typical_release": "third_business_day",
+        "revision_prone": True,
+        "narrative_hint": "Services сектор = ~70% от US икономика. По-важен от Mfg за GDP, но по-малко цикличен. Headline + Business Activity, Prices, Employment sub-indices.",
+    },
+    "CB_LEI": {
+        "source": "external",
+        "id": "cb_lei",
+        "cache_file": "data/confboard_cache.json",
+        "region": "US",
+        "name_bg": "Conference Board Leading Economic Index",
+        "name_en": "Conference Board Leading Economic Index",
+        "lens": ["growth"],
+        "peer_group": "leading_indicators",
+        "tags": ["non_consensus"],
+        "transform": "level",
+        "historical_start": "1959-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "third_thursday",
+        "revision_prone": True,
+        "narrative_hint": "10-component composite (initial claims, building permits, S&P 500, yield curve, ISM new orders, consumer expectations, etc.). Базиран на 2016=100. 6-month annualized growth rate < -4.3% + diffusion < 50 = recession signal (3Ds rule).",
+    },
+    "CB_CCI": {
+        "source": "external",
+        "id": "cb_cci",
+        "cache_file": "data/confboard_cache.json",
+        "region": "US",
+        "name_bg": "Conference Board Consumer Confidence",
+        "name_en": "Conference Board Consumer Confidence Index",
+        "lens": ["growth"],
+        "peer_group": "consumer_sentiment",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1967-06-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_tuesday",
+        "revision_prone": True,
+        "narrative_hint": "Survey-based, базиран на 1985=100. По-correlated с retail spending от U-Mich (UMCSENT). 2 sub-indices: Present Situation (current conditions) + Expectations (forward 6m). Spread между двете е recession signal.",
     },
 }
 

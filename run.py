@@ -53,6 +53,7 @@ logging.basicConfig(
 # Shared config (лек import — няма network)
 from config import (
     FRED_API_KEY,
+    FIRECRAWL_API_KEY,
     CACHE_TTL_HOURS,
     MODULE_WEIGHTS,
     MACRO_REGIMES,
@@ -155,6 +156,7 @@ def main_status(args) -> str:
     """Phase 1: Генерира Data Status Screen чрез FredAdapter + catalog."""
     # Lazy imports — не пречи на legacy path ако новите модули имат import issue
     from sources.fred_adapter import FredAdapter
+    from sources.external_loader import get_external_cache_status, UnifiedStatusAdapter
     from catalog.series import SERIES_CATALOG
     from export.data_status import generate_data_status
 
@@ -189,10 +191,16 @@ def main_status(args) -> str:
         print(f"📦 Cache: {cache_count}/{len(SERIES_CATALOG)} серии налични")
         print("   (Използвай --refresh за да ги обновиш от FRED)\n")
 
+    # Build unified status adapter (FRED + external indicators)
+    external_statuses = get_external_cache_status(SERIES_CATALOG, BASE_DIR)
+    n_external_cached = sum(1 for s in external_statuses.values() if s.get("is_cached"))
+    print(f"📦 External: {n_external_cached}/{len(external_statuses)} ISM/CB indicators в cache")
+    unified_adapter = UnifiedStatusAdapter(adapter, external_statuses)
+
     # Генериране на HTML
     output_path = BASE_DIR / OUTPUT_DIR
     print("🎨 Генерирам Data Status HTML...")
-    out_file = generate_data_status(adapter, SERIES_CATALOG, output_path)
+    out_file = generate_data_status(unified_adapter, SERIES_CATALOG, output_path)
     print(f"  ✅ Saved: {out_file.name}")
 
     # Отваряне в браузъра
@@ -228,6 +236,7 @@ def main_briefing(args) -> str:
     # Lazy imports — не пречи на legacy path
     from datetime import date
     from sources.fred_adapter import FredAdapter
+    from sources.external_loader import load_external_series
     from catalog.series import SERIES_CATALOG
     from export.weekly_briefing import generate_weekly_briefing
     from export.explorer import generate_explorer
@@ -283,6 +292,11 @@ def main_briefing(args) -> str:
 
     # Build snapshot от cache (дори след refresh — unified path)
     snapshot = adapter.get_snapshot(SERIES_CATALOG.keys())
+    # Merge external indicators (ISM, CB LEI/CCI) — те имат отделни cache файлове
+    external = load_external_series(SERIES_CATALOG, BASE_DIR)
+    if external:
+        snapshot.update(external)
+        print(f"📦 External: добавени {len(external)} ISM/CB серии в snapshot")
     print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
 
     # ─── Analog bundle (Phase 4, opt-in) ──────────────────────────
@@ -459,6 +473,7 @@ def main_export_context(args) -> str:
     """
     from datetime import date as date_cls
     from sources.fred_adapter import FredAdapter
+    from sources.external_loader import load_external_series
     from catalog.series import SERIES_CATALOG
     from analysis.breadth import compute_lens_breadth
     from analysis.divergence import compute_cross_lens_divergence
@@ -505,8 +520,12 @@ def main_export_context(args) -> str:
         else:
             print(f"📦 Cache fresh — пропускам refresh.\n")
 
-    # Build snapshot
+    # Build snapshot — FRED + external (ISM, CB LEI/CCI)
     snapshot = adapter.get_snapshot(SERIES_CATALOG.keys())
+    external = load_external_series(SERIES_CATALOG, BASE_DIR)
+    if external:
+        snapshot.update(external)
+        print(f"📦 External: добавени {len(external)} ISM/CB серии")
     print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
 
     # Compute analysis layers
@@ -536,6 +555,139 @@ def main_export_context(args) -> str:
     print("\n💡 Отвори файла или го закачи към Claude чат за дълбок анализ.\n")
     print("✅ Done!\n")
     return md_path
+
+
+# ============================================================
+# FETCH-ISM MODE
+# ============================================================
+
+def main_fetch_ism(args) -> None:
+    """Scrape ISM Manufacturing + Services PMI през Firecrawl, кешира резултата.
+
+    Free-tier Firecrawl ограничение: само латест месец (не historical series).
+    Кешът е валиден 25 дни — обхваща един release cycle.
+    """
+    from sources.ism_adapter import ISMAdapter
+
+    print("\n" + "═" * 60)
+    print("  📊  Fetch ISM PMI  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print("═" * 60 + "\n")
+
+    adapter = ISMAdapter(api_key=FIRECRAWL_API_KEY, base_dir=BASE_DIR)
+
+    print("🌐 Scrape ISM (двустъпков: index → report)...")
+    results = adapter.fetch_all(force=args.refresh)
+    failures = adapter.last_fetch_failures()
+
+    for key, entry in results.items():
+        if not entry:
+            print(f"  ❌ {key}: няма данни (fetch fail-на, няма cache)")
+            continue
+        current = entry.get("current") or {}
+        headline = current.get("headline")
+        month = current.get("month")
+        n_sub = len(current.get("subindices", {}))
+        quality = current.get("parse_quality", "?")
+        n_hist = len(entry.get("history", {}))
+        hist_src = entry.get("history_source") or "—"
+        marker = "✅" if quality == "ok" else "⚠"
+        print(f"  {marker} {key}: {headline}% ({month}) — {n_sub} sub-indices "
+              f"[parse: {quality}] · history: {n_hist} obs ({hist_src})")
+
+    if failures:
+        print(f"\n⚠ Failures: {', '.join(failures)}")
+        print("  Виж logs за детайли. Provider down / structure changed → debug markdown")
+        print("  във data/ism_debug/.")
+
+    print(f"\n📦 Cache: {adapter.cache_path}")
+    print("\n✅ Done!\n")
+
+
+# ============================================================
+# FETCH-CONFBOARD MODE
+# ============================================================
+
+def main_fetch_confboard(args) -> None:
+    """Scrape Conference Board LEI + Consumer Confidence през Firecrawl.
+
+    Same pattern като main_fetch_ism — single-step fetch (CB topic pages
+    embed-ват latest press release inline).
+    """
+    from sources.confboard_adapter import ConfBoardAdapter
+
+    print("\n" + "═" * 60)
+    print("  📊  Fetch Conference Board (LEI + CCI)  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print("═" * 60 + "\n")
+
+    adapter = ConfBoardAdapter(api_key=FIRECRAWL_API_KEY, base_dir=BASE_DIR)
+    print("🌐 Scrape Conference Board (single-step)...")
+    results = adapter.fetch_all(force=args.refresh)
+    failures = adapter.last_fetch_failures()
+
+    for key, entry in results.items():
+        if not entry:
+            print(f"  ❌ {key}: няма данни (fetch fail-на, няма cache)")
+            continue
+        current = entry.get("current") or {}
+        headline = current.get("headline")
+        month = current.get("month")
+        n_sub = len(current.get("subcomponents", {}))
+        quality = current.get("parse_quality", "?")
+        mom = current.get("mom_change")
+        mom_str = f", MoM {mom:+}" if mom is not None else ""
+        n_hist = len(entry.get("history", {}))
+        hist_src = entry.get("history_source") or "—"
+        marker = "✅" if quality == "ok" else "⚠"
+        print(f"  {marker} {key}: {headline} ({month}{mom_str}) — "
+              f"{n_sub} subcomponents [parse: {quality}] · "
+              f"history: {n_hist} obs ({hist_src})")
+
+    if failures:
+        print(f"\n⚠ Failures: {', '.join(failures)}")
+        print("  Debug markdown — data/confboard_debug/")
+
+    print(f"\n📦 Cache: {adapter.cache_path}")
+    print("\n✅ Done!\n")
+
+
+# ============================================================
+# IMPORT-BLOOMBERG MODE
+# ============================================================
+
+def main_import_bloomberg(args) -> None:
+    """Import historical data от Bloomberg Excel/CSV файл в cache history{}.
+
+    Универсален importer — работи за всички indicators с history-aware
+    cache (ism_*, cb_*). Виж scripts/import_bloomberg.py за detail.
+    """
+    if not args.indicator:
+        print("❌ --import-bloomberg изисква --indicator <KEY>")
+        print("   Пример: python run.py --import-bloomberg --indicator cb_lei --file data.xlsx")
+        sys.exit(1)
+    if not args.file:
+        print("❌ --import-bloomberg изисква --file <PATH>")
+        sys.exit(1)
+
+    from scripts.import_bloomberg import run_import
+
+    print("\n" + "═" * 60)
+    print("  📥  Import Bloomberg History  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print(f"  Indicator: {args.indicator}")
+    print(f"  File: {args.file}")
+    print("═" * 60 + "\n")
+
+    try:
+        run_import(args, BASE_DIR)
+        print("\n✅ Done!\n")
+    except Exception as e:
+        print(f"\n❌ Import се провали: {e}\n")
+        sys.exit(1)
 
 
 # ============================================================
@@ -572,6 +724,62 @@ def _parse_args():
         help="Експортира briefing_context_YYYY-MM-DD.md за LLM (Claude) анализ. "
              "Markdown файл с пълен analytical state + per-series fact cards "
              "(5y range, percentile, последни readings, narrative_hint).",
+    )
+    mode.add_argument(
+        "--fetch-ism",
+        dest="fetch_ism",
+        action="store_true",
+        help="Scrape ISM Manufacturing + Services PMI през Firecrawl. "
+             "Free-tier ограничение: само латест месец. Кеш 25 дни. "
+             "Изисква FIRECRAWL_API_KEY в .env.",
+    )
+    mode.add_argument(
+        "--fetch-confboard",
+        dest="fetch_confboard",
+        action="store_true",
+        help="Scrape Conference Board LEI + Consumer Confidence през Firecrawl. "
+             "Същата free-tier логика като --fetch-ism. "
+             "Изисква FIRECRAWL_API_KEY в .env.",
+    )
+    mode.add_argument(
+        "--import-bloomberg",
+        dest="import_bloomberg",
+        action="store_true",
+        help="Import historical data от Bloomberg Excel/CSV в cache history{}. "
+             "Изисква --indicator <KEY> + --file <PATH>. Работи за всички indicators: "
+             "manufacturing_pmi, services_pmi, cb_lei, cb_cci.",
+    )
+
+    # Args за --import-bloomberg (не са в mutex group защото са sub-args)
+    parser.add_argument(
+        "--indicator",
+        default=None,
+        help="(--import-bloomberg) Indicator key за import.",
+    )
+    parser.add_argument(
+        "--file",
+        default=None,
+        help="(--import-bloomberg) Path към Bloomberg export file (.xlsx / .csv).",
+    )
+    parser.add_argument(
+        "--date-col",
+        default=None,
+        help="(--import-bloomberg) Custom date column header (auto-detect ако липсва).",
+    )
+    parser.add_argument(
+        "--value-col",
+        default=None,
+        help="(--import-bloomberg) Custom value column header (auto-detect ако липсва).",
+    )
+    parser.add_argument(
+        "--no-month-snap",
+        action="store_true",
+        help="(--import-bloomberg) НЕ нормализирай датите към 1-ви на месеца.",
+    )
+    parser.add_argument(
+        "--source-label",
+        default=None,
+        help="(--import-bloomberg) Audit label (default 'bloomberg_csv').",
     )
     parser.add_argument(
         "--refresh",
@@ -610,6 +818,12 @@ if __name__ == "__main__":
         main_refresh_only(args)
     elif args.export_context:
         main_export_context(args)
+    elif args.fetch_ism:
+        main_fetch_ism(args)
+    elif args.fetch_confboard:
+        main_fetch_confboard(args)
+    elif args.import_bloomberg:
+        main_import_bloomberg(args)
     elif args.briefing:
         main_briefing(args)
     elif args.status:

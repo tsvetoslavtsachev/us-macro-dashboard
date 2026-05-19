@@ -1,0 +1,64 @@
+name: Fetch External Indicators (Weekly)
+
+# Седмично в Петък 16:00 UTC (18:00 Sofia EEST / 17:00 EET).
+# Хваща всички месечни releases (ISM 1-ви/3-ти business day, CB LEI 3-ти
+# четвъртък, CB CCI последен вторник) преди следващия Петък.
+#
+# Manual trigger от GitHub UI: Actions → Fetch External Indicators → Run workflow
+on:
+  schedule:
+    - cron: '0 16 * * 5'
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: 'Force re-scrape всички 4 indicators (игнорира 25-day TTL)'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-external:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch ISM (Manufacturing + Services PMI)
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.refresh }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            python run.py --fetch-ism --refresh
+          else
+            python run.py --fetch-ism
+          fi
+
+      - name: Fetch Conference Board (LEI + CCI)
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.refresh }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            python run.py --fetch-confboard --refresh
+          else
+            python run.py --fetch-confboard
+          fi
+
+      - name: Commit and push updated caches
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ism_cache.json data/confboard_cache.json
+          git diff --cached --quiet || git commit -m "chore: update external indicator caches $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

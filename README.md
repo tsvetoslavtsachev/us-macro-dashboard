@@ -126,11 +126,122 @@ pytest tests/ -q
 
 399 tests covering series catalog validation, scoring primitives, cross-lens analytics, macro vector construction, analog matching, forward-path statistics, briefing generation, and journal layer.
 
+## External data sources (Firecrawl + Bloomberg backfill)
+
+За индикатори, които не са на FRED freely (ISM, Conference Board, etc.) —
+hybrid pattern:
+
+- **Forward scrape:** Firecrawl грабва latest press release всеки ден/седмица
+- **Historical backfill:** Bloomberg export → CSV/XLSX → `--import-bloomberg`
+
+Cache shape е history-aware:
+```json
+{
+  "<indicator_key>": {
+    "current": { "headline": ..., "month": ..., "subcomponents": {...} },
+    "history": { "YYYY-MM-01": value, ... },
+    "history_source": "bloomberg_csv" | null,
+    "history_imported": "ISO timestamp"
+  }
+}
+```
+
+Поддържани indicators: `manufacturing_pmi`, `services_pmi`, `cb_lei`, `cb_cci`.
+
+### ISM PMI scraper (`--fetch-ism`)
+
+ISM Manufacturing + Services PMI от ismworld.org. Двустъпков fetch (index →
+report URL), защото ISM сменя URL pattern всеки месец.
+
+```bash
+python run.py --fetch-ism             # use cache (TTL: 25 дни)
+python run.py --fetch-ism --refresh   # force re-scrape
+```
+
+### Setup
+
+1. Get a Firecrawl API key (free tier 500 credits/month): https://www.firecrawl.dev/app/api-keys
+2. Add to `.env`: `FIRECRAWL_API_KEY=fc-...`
+3. Run `python run.py --fetch-ism`
+
+### Output
+
+`data/ism_cache.json` — per-indicator dict с headline, sub-indices, month
+covered, parse quality flag, source URL.
+
+```json
+{
+  "manufacturing_pmi": {
+    "month": "April 2026",
+    "headline": 52.7,
+    "subindices": {"New Orders": 54.1, "Production": 53.4, ...},
+    "parse_quality": "ok",
+    "last_fetched": "2026-05-19T21:17:59"
+  },
+  "services_pmi": {...}
+}
+```
+
+### Conference Board scraper (`--fetch-confboard`)
+
+Leading Economic Index (LEI) + Consumer Confidence Index (CCI) от
+conference-board.org topic landing pages. Single-step fetch (страниците
+embed-ват latest press release inline).
+
+```bash
+python run.py --fetch-confboard             # use cache (TTL: 25 дни)
+python run.py --fetch-confboard --refresh   # force re-scrape
+```
+
+Парсва headline + (за CCI) Present Situation + Expectations subcomponents.
+LEI няма sub-component values (само contribution percentages, които
+пропускаме засега).
+
+### Bloomberg historical import (`--import-bloomberg`)
+
+Backfill на historical time-series от Bloomberg export. Generic — работи
+за всички external indicators.
+
+```bash
+python run.py --import-bloomberg \
+    --indicator cb_lei \
+    --file path/to/lei_history.xlsx
+
+# С custom column names (auto-detect ако ги пропуснеш):
+python run.py --import-bloomberg \
+    --indicator manufacturing_pmi \
+    --file ism_mfg.csv \
+    --date-col PX_DATE --value-col PX_LAST
+
+# Запази оригиналните дати (не snap-вай към 1-ви на месеца):
+python run.py --import-bloomberg \
+    --indicator cb_cci --file cci.xlsx --no-month-snap
+```
+
+**Файлов формат:**
+- Excel (.xlsx/.xls/.xlsm) или CSV (.csv/.tsv)
+- Първи ред = headers
+- Auto-detect на Bloomberg headers: `PX_DATE`/`PX_LAST`, `Date`/`Value`, etc.
+- Custom headers с `--date-col`/`--value-col`
+
+**Месечни нормализации:** Дати по default се snap-ват към YYYY-MM-01 (за
+consistency с auto-history от scrape pattern-а). `--no-month-snap` за
+оригинални дати.
+
+### Limitations
+
+- **Free tier = latest month only при scrape.** Historical се пълни от
+  Bloomberg backfill (или manual CSV).
+- **Page structure-dependent.** При major site redesign може да fail-не —
+  debug markdown се dump-ва в `data/ism_debug/` или `data/confboard_debug/`.
+- **Halucination guard.** Regex parse + range validation. При parse failure
+  кешът остава stale (не overwrite-ва с боклук).
+
 ## What this is not
 
 This is not an investment product, not financial advice, not a trading signal generator. It is an analytical framework for organizing how you look at US macro data. The outputs are yours to interpret.
 
-Data sources are FRED only; no equity, options, or crypto feeds. Extend at will — the series catalog in `catalog/series.py` is the single source of truth for new data.
+Data sources are FRED (primary) и ISM (optional via Firecrawl); no equity, options, or crypto feeds. Extend at will — the series catalog in `catalog/series.py` is the single source of truth for new data.
 
 ## License
 

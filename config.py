@@ -10,7 +10,9 @@ import os
 # Локално: сложи `.env` файл в корена (виж `.env.example`) или export FRED_API_KEY=...
 # Регистрация за ключ: https://fred.stlouisfed.org/docs/api/api_key.html
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
-if not FRED_API_KEY:
+FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY", "")
+
+if not FRED_API_KEY or not FIRECRAWL_API_KEY:
     # Fallback — опит за зареждане от .env файл в корена (без python-dotenv dep)
     from pathlib import Path
     _env = Path(__file__).resolve().parent / ".env"
@@ -20,9 +22,12 @@ if not FRED_API_KEY:
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, _, value = line.partition("=")
-            if key.strip() == "FRED_API_KEY":
-                FRED_API_KEY = value.strip().strip('"').strip("'")
-                break
+            key_s = key.strip()
+            val_s = value.strip().strip('"').strip("'")
+            if key_s == "FRED_API_KEY" and not FRED_API_KEY:
+                FRED_API_KEY = val_s
+            elif key_s == "FIRECRAWL_API_KEY" and not FIRECRAWL_API_KEY:
+                FIRECRAWL_API_KEY = val_s
 
 # ─── Кеш (часове преди следващ FRED pull) ───────────────────────────────────
 CACHE_TTL_HOURS = 12

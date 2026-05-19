@@ -9,6 +9,10 @@ output/api/*
 !output/api/*.json
 data/cache.json
 data/cache.json.bak
+data/*.bak
+data/ism_debug/
+data/confboard_debug/
+data/state/briefing_*.json
 
 # ─── Journal content (framework-only is public; notes are private) ──────────
 # See journal/HOWTO.md for rationale.
