@@ -9,8 +9,14 @@ on:
     # Позволява ръчно стартиране от GitHub UI
 
 # Public repo — НЕ commit-ваме briefing в git.
-# Briefing-ите се качват като build artifact (90 дни retention).
-# Download: gh run download <run-id> -n briefing-us
+# Briefing-ът:
+#   - Deploys на GitHub Pages: https://tsvetoslavtsachev.github.io/us-macro-dashboard/
+#   - Запазен и като 90d build artifact (за historical download)
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   update:
@@ -59,7 +65,16 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python run.py --export-context --no-browser
 
-      - name: Upload briefing artifact
+      - name: Prepare Pages site
+        run: |
+          mkdir -p _site
+          LATEST=$(ls -1t output/briefing_*.html | head -n1)
+          cp "$LATEST" _site/index.html
+          cp output/briefing_*.html _site/ 2>/dev/null || true
+          cp output/briefing_context_*.md _site/ 2>/dev/null || true
+          ls -la _site/
+
+      - name: Upload briefing artifact (90d download)
         uses: actions/upload-artifact@v4
         with:
           name: briefing-us-${{ steps.cache-key.outputs.key }}
@@ -68,3 +83,22 @@ jobs:
             output/briefing_context_*.md
           if-no-files-found: error
           retention-days: 90
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
