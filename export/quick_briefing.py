@@ -22,11 +22,13 @@ import pandas as pd
 
 from analysis.executive import (
     LENS_LABEL_BG,
-    LENS_ORDER,
     REGIME_CSS_CLASS,
     REGIME_LABELS_BG,
     compute_executive_summary,
 )
+# NB: импортираме LENS_ORDER от weekly_briefing (single source of truth),
+# за да не drift-ваме от deep briefing-а
+from export.weekly_briefing import LENS_ORDER
 from analysis.breadth import compute_lens_breadth
 from analysis.divergence import compute_cross_lens_divergence
 from analysis.anomaly import compute_anomalies
