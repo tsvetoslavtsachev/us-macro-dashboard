@@ -239,6 +239,7 @@ def main_briefing(args) -> str:
     from sources.external_loader import load_external_series
     from catalog.series import SERIES_CATALOG
     from export.weekly_briefing import generate_weekly_briefing
+    from export.quick_briefing import generate_quick_briefing
     from export.explorer import generate_explorer
 
     print("\n" + "═" * 60)
@@ -358,12 +359,14 @@ def main_briefing(args) -> str:
 
     briefing_filename = f"briefing_{today.isoformat()}.html"
     briefing_path = output_dir / briefing_filename
+    quick_filename = f"briefing_quick_{today.isoformat()}.html"
+    quick_path = output_dir / quick_filename
     explorer_path = output_dir / "explorer.html"
     explorer_dated = output_dir / f"explorer_{today.isoformat()}.html"
     state_dir = BASE_DIR / "data" / "state"
 
-    # ─── Briefing ─────────────────────────────────────────────────
-    print("📰 Генерирам Weekly Briefing...")
+    # ─── Briefing (deep) ──────────────────────────────────────────
+    print("📰 Генерирам Weekly Briefing (deep)...")
     generate_weekly_briefing(
         snapshot,
         str(briefing_path),
@@ -374,6 +377,16 @@ def main_briefing(args) -> str:
         journal_entries=journal_entries,
     )
     print(f"  ✅ {briefing_path.name} ({briefing_path.stat().st_size // 1024} KB)")
+
+    # ─── Quick briefing (China-style scoreboard) ──────────────────
+    print("⚡ Генерирам Quick Briefing (scoreboard)...")
+    generate_quick_briefing(
+        snapshot,
+        str(quick_path),
+        today=today,
+        deep_link=briefing_filename,
+    )
+    print(f"  ✅ {quick_path.name} ({quick_path.stat().st_size // 1024} KB)")
 
     # ─── Explorer ─────────────────────────────────────────────────
     print("🔍 Генерирам Series Explorer...")
