@@ -10,6 +10,8 @@ output/api/*
 data/cache.json
 data/cache.json.bak
 data/*.bak
+data/fred_cache.json
+data/fred_cache.json.bak
 data/ism_debug/
 data/confboard_debug/
 data/state/briefing_*.json

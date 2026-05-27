@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
     # Позволява ръчно стартиране от GitHub UI
 
-permissions:
-  contents: write
+# Public repo — НЕ commit-ваме briefing в git.
+# Briefing-ите се качват като build artifact (90 дни retention).
+# Download: gh run download <run-id> -n briefing-us
 
 jobs:
   update:
@@ -58,15 +59,12 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python run.py --export-context --no-browser
 
-      - name: Commit and push output
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          mkdir -p output data
-          git add output data
-          if git diff --staged --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "chore: weekly macro update $(date -u '+%Y-%m-%d')"
-            git push
-          fi
+      - name: Upload briefing artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: briefing-us-${{ steps.cache-key.outputs.key }}
+          path: |
+            output/briefing_*.html
+            output/briefing_context_*.md
+          if-no-files-found: error
+          retention-days: 90
