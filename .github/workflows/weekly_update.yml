@@ -1,0 +1,72 @@
+name: Weekly US Macro Update
+
+on:
+  schedule:
+    # Всеки понеделник в 06:00 UTC (08:00 Sofia зиме / 09:00 Sofia лете)
+    # Symmetric с EU и China weekly_update workflow-ите
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    # Позволява ръчно стартиране от GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compute cache key
+        id: cache-key
+        run: echo "key=us-macro-cache-$(date -u +%Y-W%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore data cache
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            us-macro-cache-
+
+      - name: Smart refresh stale series
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python run.py --refresh-only
+
+      - name: Generate HTML briefing
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python run.py --briefing --no-browser
+
+      - name: Generate Markdown context
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python run.py --export-context --no-browser
+
+      - name: Commit and push output
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p output data
+          git add output data
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: weekly macro update $(date -u '+%Y-%m-%d')"
+            git push
+          fi
