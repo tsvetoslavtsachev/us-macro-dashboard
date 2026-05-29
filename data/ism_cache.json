@@ -3,7 +3,7 @@
     "indicator": "manufacturing_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/april/",
-      "last_fetched": "2026-05-22T17:30:39.134849",
+      "last_fetched": "2026-05-29T18:24:53.373158",
       "month": "April 2026",
       "headline": 52.7,
       "subindices": {
@@ -966,7 +966,7 @@
     "indicator": "services_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/april/",
-      "last_fetched": "2026-05-22T17:30:39.919862",
+      "last_fetched": "2026-05-29T18:24:57.411646",
       "month": "April 2026",
       "headline": 53.6,
       "subindices": {

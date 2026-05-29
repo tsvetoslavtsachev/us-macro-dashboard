@@ -3,7 +3,7 @@
     "indicator": "cb_lei",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/us-leading-indicators",
-      "last_fetched": "2026-05-22T17:30:40.680625",
+      "last_fetched": "2026-05-29T18:24:58.194898",
       "month": "April 2026",
       "headline": 97.4,
       "mom_change": 0.7,
@@ -828,13 +828,13 @@
     "indicator": "cb_cci",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/consumer-confidence",
-      "last_fetched": "2026-05-22T17:30:41.055439",
-      "month": "April 2026",
-      "headline": 92.8,
-      "mom_change": 0.6,
+      "last_fetched": "2026-05-29T18:24:58.685864",
+      "month": "May 2026",
+      "headline": 93.1,
+      "mom_change": 1.0,
       "subcomponents": {
-        "Present Situation": 123.8,
-        "Expectations": 72.2
+        "Present Situation": 121.2,
+        "Expectations": 74.4
       },
       "parse_quality": "ok",
       "missing_subcomponents": []
@@ -1486,7 +1486,8 @@
       "1967-12-01": 136.1,
       "1967-10-01": 134.5,
       "1967-08-01": 130.1,
-      "1967-06-01": 134.0
+      "1967-06-01": 134.0,
+      "2026-05-01": 93.1
     },
     "history_source": "bloomberg_csv",
     "history_imported": "2026-05-19T23:13:14.316460"
