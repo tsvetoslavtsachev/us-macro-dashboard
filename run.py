@@ -50,6 +50,24 @@ logging.basicConfig(
     format="%(message)s",
 )
 
+
+def _bloomberg_bridge_snapshot() -> dict:
+    """Bloomberg bridge серии — parquet (local dev) или committed JSON (CI), read-only.
+
+    vrm-data-archive parquet не е достъпен в CI → adapter-ът чете
+    data/bloomberg_bridge.json (committed). Локално чете freshest parquet.
+    """
+    try:
+        from catalog.series import SERIES_CATALOG
+        from sources.bloomberg_bridge_adapter import BloombergBridgeAdapter
+        snap = BloombergBridgeAdapter(base_dir=BASE_DIR).get_snapshot(SERIES_CATALOG)
+        if snap:
+            print(f"📦 Bloomberg bridge: добавени {len(snap)} серии")
+        return snap
+    except Exception as e:
+        logging.warning(f"Bloomberg bridge snapshot failed: {e}")
+        return {}
+
 # Shared config (лек import — няма network)
 from config import (
     FRED_API_KEY,
@@ -298,6 +316,7 @@ def main_briefing(args) -> str:
     if external:
         snapshot.update(external)
         print(f"📦 External: добавени {len(external)} ISM/CB серии в snapshot")
+    snapshot.update(_bloomberg_bridge_snapshot())
     print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
 
     # ─── Analog bundle (Phase 4, opt-in) ──────────────────────────
@@ -539,6 +558,7 @@ def main_export_context(args) -> str:
     if external:
         snapshot.update(external)
         print(f"📦 External: добавени {len(external)} ISM/CB серии")
+    snapshot.update(_bloomberg_bridge_snapshot())
     print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
 
     # Compute analysis layers
