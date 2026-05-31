@@ -41,6 +41,15 @@ import webbrowser
 from pathlib import Path
 from datetime import datetime
 
+# Windows конзолата по подразбиране е cp1252 → box-drawing/emoji хвърлят
+# UnicodeEncodeError. Reconfigure към utf-8 преди всякакъв print.
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Добавяме econ_v2/ в Python path
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
