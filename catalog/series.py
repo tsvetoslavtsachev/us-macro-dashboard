@@ -17,12 +17,12 @@ from typing import Any
 # ALLOWED VALUES (за validation)
 # ============================================================
 
-ALLOWED_SOURCES = {"fred", "eurostat", "external", "pending"}  # "external" = scraped + Bloomberg backfill
+ALLOWED_SOURCES = {"fred", "eurostat", "external", "pending", "bloomberg_bridge"}  # bloomberg_bridge = reads parquet from vrm-data-archive
 ALLOWED_REGIONS = {"US", "EU", "GLOBAL"}
 ALLOWED_LENSES = {"labor", "growth", "inflation", "liquidity", "housing"}
 ALLOWED_TRANSFORMS = {"level", "yoy_pct", "mom_pct", "z_score", "first_diff"}
 ALLOWED_TAGS = {"non_consensus", "ai_exposure", "structural"}
-ALLOWED_SCHEDULES = {"weekly", "monthly", "quarterly", "annually"}
+ALLOWED_SCHEDULES = {"daily", "weekly", "monthly", "quarterly", "annually"}
 
 
 # ============================================================
@@ -640,6 +640,13 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "revision_prone": True,
         "narrative_hint": "Композит от 85 индикатора в 4 категории. Zero = trend growth. Класически recession trigger: CFNAIMA3 < -0.7 → recession probable.",
     },
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_supply (construction pipeline)
+    # ───────────────────────────────────────────────────────
+    # Серия group обхваща pipeline: permits → starts → completions → spend.
+    # Permits водят starts с 1-2 месечен lag; completions затварят цикъла.
+    # Construction spending дава dollar-volume context.
+
     "PERMIT": {
         "source": "fred",
         "id": "PERMIT",
@@ -647,7 +654,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "name_bg": "Разрешения за строителство",
         "name_en": "New Private Housing Units Authorized by Building Permits",
         "lens": ["growth", "housing"],
-        "peer_group": "leading",
+        "peer_group": "housing_supply",
         "tags": [],
         "transform": "yoy_pct",
         "historical_start": "1960-01-01",
@@ -663,7 +670,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "name_bg": "Жилищни старт-ове",
         "name_en": "Housing Starts",
         "lens": ["growth", "housing"],
-        "peer_group": "leading",
+        "peer_group": "housing_supply",
         "tags": [],
         "transform": "yoy_pct",
         "historical_start": "1959-01-01",
@@ -671,6 +678,492 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "typical_release": "day_15_to_17",
         "revision_prone": False,
         "narrative_hint": "Колапсва преди ипотечната криза 2006-2007 — класически leading signal.",
+    },
+    "COMPUTSA": {
+        "source": "fred",
+        "id": "COMPUTSA",
+        "region": "US",
+        "name_bg": "Завършени жилища (SAAR)",
+        "name_en": "New Privately Owned Housing Units Completed: Total Units",
+        "lens": ["growth", "housing"],
+        "peer_group": "housing_supply",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1968-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "day_15_to_17",
+        "revision_prone": False,
+        "narrative_hint": "Завършва construction pipeline (12-18m след starts). Превишение спрямо sales = inventory build.",
+    },
+    "TLRESCONS": {
+        "source": "fred",
+        "id": "TLRESCONS",
+        "region": "US",
+        "name_bg": "Жилищно строителство — разходи (SAAR)",
+        "name_en": "Total Construction Spending: Residential",
+        "lens": ["growth", "housing"],
+        "peer_group": "housing_supply",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "2002-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_business_day",
+        "revision_prone": True,
+        "narrative_hint": "Dollar-volume measure на residential construction. Включва ремонти и renovations + new builds.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_sales (transaction volume + inventory)
+    # ───────────────────────────────────────────────────────
+
+    "HSN1F": {
+        "source": "fred",
+        "id": "HSN1F",
+        "region": "US",
+        "name_bg": "Продажби на нови жилища (SAAR)",
+        "name_en": "New One Family Houses Sold: United States",
+        "lens": ["housing"],
+        "peer_group": "housing_sales",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1963-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_wednesday",
+        "revision_prone": True,
+        "narrative_hint": "Census/HUD new home sales. Подава директна demand за нови строежи; revision-prone (±20% първи отчет).",
+    },
+    "EXHOSLUSM495S": {
+        "source": "fred",
+        "id": "EXHOSLUSM495S",
+        "region": "US",
+        "name_bg": "Продажби на съществуващи жилища (SAAR)",
+        "name_en": "Existing Home Sales (NAR)",
+        "lens": ["housing"],
+        "peer_group": "housing_sales",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1999-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "day_20_to_25",
+        "revision_prone": False,
+        "narrative_hint": "NAR данни през FRED. >90% от всички home transactions; главна demand-side serie.",
+    },
+    "HOSINVUSM495N": {
+        "source": "fred",
+        "id": "HOSINVUSM495N",
+        "region": "US",
+        "name_bg": "Inventory — съществуващи жилища (NSA)",
+        "name_en": "Existing Home Sales: Housing Inventory",
+        "lens": ["housing"],
+        "peer_group": "housing_sales",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1999-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "day_20_to_25",
+        "revision_prone": False,
+        "narrative_hint": "Брой listed homes for sale (NAR). Ниско inventory = sellers' market; високо = buyers'. Конструктивен партньор на sales.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_prices (HPI + medians)
+    # ───────────────────────────────────────────────────────
+
+    "CSUSHPISA": {
+        "source": "fred",
+        "id": "CSUSHPISA",
+        "region": "US",
+        "name_bg": "Case-Shiller US National HPI (SA)",
+        "name_en": "S&P Cotality Case-Shiller US National Home Price Index",
+        "lens": ["housing"],
+        "peer_group": "housing_prices",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1987-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_tuesday",
+        "revision_prone": False,
+        "narrative_hint": "Главен ценови benchmark. Repeat-sales методология; ~2 месеца lag. National композит на 9 census divisions.",
+    },
+    "SPCS20RSA": {
+        "source": "fred",
+        "id": "SPCS20RSA",
+        "region": "US",
+        "name_bg": "Case-Shiller 20-City Composite HPI (SA)",
+        "name_en": "S&P Cotality Case-Shiller 20-City Composite Home Price Index",
+        "lens": ["housing"],
+        "peer_group": "housing_prices",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "2000-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_tuesday",
+        "revision_prone": False,
+        "narrative_hint": "20 metro composite. По-урбанизиран от National; типично leads National с 1-2m в spike-овете.",
+    },
+    "USSTHPI": {
+        "source": "fred",
+        "id": "USSTHPI",
+        "region": "US",
+        "name_bg": "FHFA House Price Index (Q, NSA)",
+        "name_en": "FHFA All-Transactions House Price Index for the United States",
+        "lens": ["housing"],
+        "peer_group": "housing_prices",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1975-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "late_february_may_august_november",
+        "revision_prone": False,
+        "narrative_hint": "По-широк от Case-Shiller (вкл. all GSE-mortgaged transactions). Покрива 50 щата + 400 metros.",
+    },
+    "HPIPONM226S": {
+        "source": "fred",
+        "id": "HPIPONM226S",
+        "region": "US",
+        "name_bg": "FHFA HPI — Monthly Purchase-Only (SA)",
+        "name_en": "FHFA Purchase-Only House Price Index (Monthly, SA)",
+        "lens": ["housing"],
+        "peer_group": "housing_prices",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1991-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_tuesday",
+        "revision_prone": False,
+        "narrative_hint": "Monthly FHFA версия. Само purchase transactions (без refi appraisals). По-чист от refi-bias.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_financing (mortgage rates)
+    # ───────────────────────────────────────────────────────
+
+    "MORTGAGE30US": {
+        "source": "fred",
+        "id": "MORTGAGE30US",
+        "region": "US",
+        "name_bg": "30-годишна фиксирана ипотечна лихва (Freddie PMMS)",
+        "name_en": "30-Year Fixed Rate Mortgage Average in the United States",
+        "lens": ["housing"],
+        "peer_group": "housing_financing",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1971-04-02",
+        "release_schedule": "weekly",
+        "typical_release": "thursday",
+        "revision_prone": False,
+        "narrative_hint": "Freddie Mac PMMS. Главен mortgage benchmark. Спред към 10Y UST е housing transmission proxy.",
+    },
+    "MORTGAGE15US": {
+        "source": "fred",
+        "id": "MORTGAGE15US",
+        "region": "US",
+        "name_bg": "15-годишна фиксирана ипотечна лихва",
+        "name_en": "15-Year Fixed Rate Mortgage Average in the United States",
+        "lens": ["housing"],
+        "peer_group": "housing_financing",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1991-08-30",
+        "release_schedule": "weekly",
+        "typical_release": "thursday",
+        "revision_prone": False,
+        "narrative_hint": "По-кратка матуритет за refi/purchase алтернатива. 30Y-15Y spread = inflation expectations + duration premium.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_affordability (months supply + HAI)
+    # ───────────────────────────────────────────────────────
+
+    "MSACSR": {
+        "source": "fred",
+        "id": "MSACSR",
+        "region": "US",
+        "name_bg": "Месеци предлагане — нови жилища",
+        "name_en": "Monthly Supply of New Houses in the United States",
+        "lens": ["housing"],
+        "peer_group": "housing_affordability",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1963-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_wednesday",
+        "revision_prone": True,
+        "narrative_hint": "Inventory ÷ current sales rate. <4 = tight market, 6 = balanced, >7 = oversupplied. Класически recession leading.",
+    },
+    "FIXHAI": {
+        "source": "fred",
+        "id": "FIXHAI",
+        "region": "US",
+        "name_bg": "NAR Housing Affordability Index (fixed mortgage)",
+        "name_en": "NAR Housing Affordability Index (Fixed Mortgage)",
+        "lens": ["housing"],
+        "peer_group": "housing_affordability",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1989-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "day_10",
+        "revision_prone": False,
+        "narrative_hint": "100 = типичното семейство има точно средствата за типична къща при 20% downpayment. <100 = unaffordable.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_affordability — NAHB HMI (bloomberg_bridge history)
+    # ───────────────────────────────────────────────────────
+    # History: Bloomberg parquet (1985+). Current latest: press release scraper
+    # (sources/press_release_scraper.py:NAHBAdapter) когато имплементираме parse_html.
+
+    "NAHB_HMI": {
+        "source": "bloomberg_bridge",
+        "id": "NAHB_HMI",
+        "parquet_path": "../../vrm-data-archive/parquet/NAHB_HMI.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "NAHB/Wells Fargo Housing Market Index (builder sentiment)",
+        "name_en": "NAHB/Wells Fargo Housing Market Index",
+        "lens": ["housing"],
+        "peer_group": "housing_affordability",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1985-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "third_monday",
+        "revision_prone": False,
+        "narrative_hint": "Builder sentiment — >50 = positive. Leading on housing starts с 3-6m.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_financing — MBA Mortgage Applications (bloomberg_bridge history)
+    # ───────────────────────────────────────────────────────
+
+    "MBA_PURCHASE_IDX": {
+        "source": "bloomberg_bridge",
+        "id": "MBA_PURCHASE_IDX",
+        "parquet_path": "../../vrm-data-archive/parquet/MBA_PURCHASE_IDX.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "MBA Седмични молби за покупка на имот",
+        "name_en": "MBA Purchase Index (Weekly)",
+        "lens": ["housing"],
+        "peer_group": "housing_financing",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1990-01-01",
+        "release_schedule": "weekly",
+        "typical_release": "wednesday",
+        "revision_prone": False,
+        "narrative_hint": "Седмично purchase demand. По-висока честота от Existing/New Home Sales — leads с 1-2m.",
+    },
+    "MBA_REFINANCE_IDX": {
+        "source": "bloomberg_bridge",
+        "id": "MBA_REFINANCE_IDX",
+        "parquet_path": "../../vrm-data-archive/parquet/MBA_REFINANCE_IDX.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "MBA Седмични молби за рефинансиране",
+        "name_en": "MBA Refinance Index (Weekly)",
+        "lens": ["housing"],
+        "peer_group": "housing_financing",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "1990-01-01",
+        "release_schedule": "weekly",
+        "typical_release": "wednesday",
+        "revision_prone": False,
+        "narrative_hint": "Refi pulse — interest rate sensitivity proxy. Spike-ва при rate drops.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_sales — NAR Pending Home Sales Index (bloomberg_bridge)
+    # ───────────────────────────────────────────────────────
+
+    "NAR_PHSI": {
+        "source": "bloomberg_bridge",
+        "id": "NAR_PHSI",
+        "parquet_path": "../../vrm-data-archive/parquet/NAR_PHSI.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "NAR Pending Home Sales Index",
+        "name_en": "NAR Pending Home Sales Index",
+        "lens": ["housing"],
+        "peer_group": "housing_sales",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "2001-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "last_wednesday",
+        "revision_prone": True,
+        "narrative_hint": "Подписани договори (още не затворени). Leads Existing Home Sales с 1-2 месеца.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # GROWTH / diffusion_indices — S&P Global PMI (Bloomberg-bridge, Markit data)
+    # ───────────────────────────────────────────────────────
+    # Markit/S&P Global PMI — paywalled на FRED, free само recent. Bloomberg за full history.
+    # Complement ISM PMI (US-specific) с глобален Markit benchmark.
+
+    "US_PMI_COMPOSITE": {
+        "source": "bloomberg_bridge",
+        "id": "US_PMI_COMPOSITE",
+        "parquet_path": "../../vrm-data-archive/parquet/US_PMI_COMPOSITE.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "S&P Global US Composite PMI",
+        "name_en": "S&P Global / Markit US Composite PMI (MPMIUSCA)",
+        "lens": ["growth"],
+        "peer_group": "diffusion_indices",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2009-10-01",
+        "release_schedule": "monthly",
+        "typical_release": "third_thursday",
+        "revision_prone": True,
+        "narrative_hint": "Markit композит — global benchmark, complement към ISM. Flash + final estimates.",
+    },
+    "US_PMI_MFG": {
+        "source": "bloomberg_bridge",
+        "id": "US_PMI_MFG",
+        "parquet_path": "../../vrm-data-archive/parquet/US_PMI_MFG.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "S&P Global US Manufacturing PMI",
+        "name_en": "S&P Global Markit US Mfg PMI (MPMIUSMA)",
+        "lens": ["growth"],
+        "peer_group": "diffusion_indices",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2007-05-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_business_day",
+        "revision_prone": True,
+        "narrative_hint": "Markit mfg — comparable cross-country. ISM е US-only.",
+    },
+    "US_PMI_SVCS": {
+        "source": "bloomberg_bridge",
+        "id": "US_PMI_SVCS",
+        "parquet_path": "../../vrm-data-archive/parquet/US_PMI_SVCS.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "S&P Global US Services PMI",
+        "name_en": "S&P Global Markit US Services PMI (MPMIUSSA)",
+        "lens": ["growth"],
+        "peer_group": "diffusion_indices",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2009-10-01",
+        "release_schedule": "monthly",
+        "typical_release": "third_thursday",
+        "revision_prone": True,
+        "narrative_hint": "Markit services — global comparable. ISM Services има различна methodology.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # LIQUIDITY / policy_rates — SOFR OIS (implied policy path)
+    # ───────────────────────────────────────────────────────
+    # USD OIS rates linked to SOFR. Дава имплициран Fed funds path по чист
+    # начин — quoted като percent rate директно (no transform нужен).
+    # Symmetric с EU OIS (€STR-linked) — eu_macro_dashboard има EA_OIS_*.
+
+    "US_SOFR_OIS_3M": {
+        "source": "bloomberg_bridge",
+        "id": "US_SOFR_OIS_3M",
+        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_3M.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "USD SOFR OIS 3M",
+        "name_en": "USD SOFR-linked OIS 3M (USOSFR3)",
+        "lens": ["liquidity"],
+        "peer_group": "policy_rates",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2018-04-03",
+        "release_schedule": "daily",
+        "typical_release": "daily_close",
+        "revision_prone": False,
+        "narrative_hint": "Short-end implied Fed path. SOFR replaces LIBOR (post-2022).",
+    },
+    "US_SOFR_OIS_6M": {
+        "source": "bloomberg_bridge",
+        "id": "US_SOFR_OIS_6M",
+        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_6M.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "USD SOFR OIS 6M",
+        "name_en": "USD SOFR-linked OIS 6M (USOSFR6)",
+        "lens": ["liquidity"],
+        "peer_group": "policy_rates",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2018-04-03",
+        "release_schedule": "daily",
+        "typical_release": "daily_close",
+        "revision_prone": False,
+        "narrative_hint": "6m horizon implied policy path.",
+    },
+    "US_SOFR_OIS_1Y": {
+        "source": "bloomberg_bridge",
+        "id": "US_SOFR_OIS_1Y",
+        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_1Y.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "USD SOFR OIS 1Y",
+        "name_en": "USD SOFR-linked OIS 1Y (USOSFR1)",
+        "lens": ["liquidity"],
+        "peer_group": "policy_rates",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2018-04-03",
+        "release_schedule": "daily",
+        "typical_release": "daily_close",
+        "revision_prone": False,
+        "narrative_hint": "1y horizon implied policy path. Главен terminal rate proxy.",
+    },
+    "US_SOFR_OIS_2Y": {
+        "source": "bloomberg_bridge",
+        "id": "US_SOFR_OIS_2Y",
+        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_2Y.parquet",
+        "license_class": "bloomberg_internal_use",
+        "region": "US",
+        "name_bg": "USD SOFR OIS 2Y",
+        "name_en": "USD SOFR-linked OIS 2Y (USOSFR2)",
+        "lens": ["liquidity"],
+        "peer_group": "policy_rates",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "2018-04-03",
+        "release_schedule": "daily",
+        "typical_release": "daily_close",
+        "revision_prone": False,
+        "narrative_hint": "2y horizon — equilibrium rate proxy.",
+    },
+
+    # ───────────────────────────────────────────────────────
+    # HOUSING / housing_prices — Zillow ZHVI (external, CC0)
+    # ───────────────────────────────────────────────────────
+    # Лиценз: Creative Commons CC0 1.0 (public domain).
+    # Свободно за republish в публични dashboards.
+    # Refresh: monthly, около 15-ти на месеца чрез --fetch-zillow.
+
+    "ZHVI_US_SFR_CONDO": {
+        "source": "external",
+        "id": "ZHVI_US_SFR_CONDO",
+        "cache_file": "data/zillow_cache.json",
+        "region": "US",
+        "name_bg": "Zillow Home Value Index — All Homes (SFR+Condo, SA, smoothed)",
+        "name_en": "Zillow ZHVI: All Homes (SFR+Condo), Tier 0.33-0.67, Smoothed Seasonally Adjusted",
+        "lens": ["housing"],
+        "peer_group": "housing_prices",
+        "tags": [],
+        "transform": "yoy_pct",
+        "historical_start": "2000-01-31",
+        "release_schedule": "monthly",
+        "typical_release": "day_15",
+        "revision_prone": False,
+        "narrative_hint": "Repeat-sales hedonic estimator от 110M+ имоти. По-широк от Case-Shiller (всички ZIP-ове, не само 20 metros).",
+        # Zillow adapter specific:
+        "zillow_url": "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv",
+        "zillow_region_name": "United States",
     },
 
     # ───────────────────────────────────────────────────────

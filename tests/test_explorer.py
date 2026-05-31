@@ -111,8 +111,9 @@ class TestStructure:
     def test_index_table_groups_by_primary_lens(self, tmp_output):
         path = generate_explorer({}, str(tmp_output))
         content = Path(path).read_text(encoding="utf-8")
-        # 4 lens групи в index-а
-        for lens_label in ["Трудов пазар", "Растеж", "Инфлация", "Ликвидност и кредит"]:
+        # 5 lens групи в index-а (core 4 + housing extension; harmonized BG labels)
+        for lens_label in ["Пазар на труда", "Растеж и активност", "Инфлация и цени",
+                            "Монетарна политика и кредит", "Жилищен пазар"]:
             assert lens_label in content, f"Lens group missing: {lens_label}"
         # Index секция присъства
         assert "Индекс" in content or 'class="expl-index"' in content

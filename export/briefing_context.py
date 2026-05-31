@@ -50,7 +50,7 @@ from core.primitives import _infer_yoy_periods
 
 HISTORY_YEARS = 5             # window за percentile rank + range stats
 FACT_CARD_TAIL = 6            # последни N readings в fact card
-LENS_ORDER = ["labor", "growth", "inflation", "liquidity"]
+LENS_ORDER = ["labor", "growth", "inflation", "liquidity", "housing"]
 
 # ─── STALENESS (D1) — period-aware staleness assessment ────
 # За всеки release_schedule имаме:
@@ -94,10 +94,11 @@ NOMINAL_SERIES_NEED_DEFLATION = {
     "PAYEMS":         "Total payrolls (count, не nominal в обичайния смисъл)",
 }
 LENS_LABEL_BG = {
-    "labor":     "Трудов пазар",
-    "growth":    "Растеж",
-    "inflation": "Инфлация",
-    "liquidity": "Ликвидност и кредит",
+    "labor":     "Пазар на труда",
+    "growth":    "Растеж и активност",
+    "inflation": "Инфлация и цени",
+    "liquidity": "Монетарна политика и кредит",
+    "housing":   "Жилищен пазар",
 }
 DIRECTION_LABEL_BG = {
     "expanding":         "разширяване",

@@ -67,12 +67,13 @@ REGIME_CSS_CLASS = {
     "transition": "regime-trans",
 }
 
-LENS_ORDER = ("labor", "growth", "inflation", "liquidity")
+LENS_ORDER = ("labor", "growth", "inflation", "liquidity", "housing")
 LENS_LABEL_BG = {
-    "labor": "Labor",
-    "growth": "Growth",
-    "inflation": "Inflation",
-    "liquidity": "Liquidity",
+    "labor":     "Пазар на труда",
+    "growth":    "Растеж и активност",
+    "inflation": "Инфлация и цени",
+    "liquidity": "Монетарна политика и кредит",
+    "housing":   "Жилищен пазар",
 }
 
 

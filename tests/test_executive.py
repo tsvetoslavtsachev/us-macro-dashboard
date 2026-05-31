@@ -262,7 +262,8 @@ def test_lens_rows_basic_aggregation():
     })
 
     rows = _build_lens_rows(lens_reports, anom)
-    assert len(rows) == 4
+    # Phase 1.5 (2026-05-31): core 4 + housing extension = 5 lens rows
+    assert len(rows) == 5
     labor_row = next(r for r in rows if r.lens == "labor")
     assert labor_row.anomaly_count == 1
     assert labor_row.new_extreme_count == 1
@@ -276,11 +277,11 @@ def test_lens_rows_handles_missing_lens():
     lens_reports = make_lens_reports({
         "labor": [("wage_dynamics", "expanding", 0.8)],
     })
-    # growth/inflation/liquidity са липсващи
+    # growth/inflation/liquidity/housing са липсващи
     anom = make_anomaly_report()
     rows = _build_lens_rows(lens_reports, anom)
-    # Все още 4 реда, но 3 от тях са insufficient_data
-    assert len(rows) == 4
+    # 5 реда (core 4 + housing), но 4 от тях са insufficient_data
+    assert len(rows) == 5
     non_labor = [r for r in rows if r.lens != "labor"]
     assert all(r.direction == "insufficient_data" for r in non_labor)
 
@@ -385,8 +386,8 @@ def test_compute_executive_summary_stagflation_scenario():
     assert "стагфлационна" in snap.narrative_bg.lower()
     # Anchored counter-signal should appear
     assert "anchored" in snap.narrative_bg.lower() or "narrative" in snap.narrative_bg.lower()
-    # Lens rows — all 4 present
-    assert len(snap.lens_rows) == 4
+    # Lens rows — core 4 + housing extension = 5 (Phase 1.5)
+    assert len(snap.lens_rows) == 5
 
 
 def test_compute_executive_summary_soft_landing_with_credit_warning():

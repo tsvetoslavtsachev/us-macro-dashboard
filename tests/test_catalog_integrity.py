@@ -44,10 +44,15 @@ class TestCatalogSize:
     def test_unique_series_keys(self):
         """Ключовете в dict са уникални по дефиниция, но тестваме expected count."""
         # Dict duplicate detection е невъзможно runtime — но количеството трябва
-        # да съвпада с броя FRED+pending source entries.
-        n_fred = sum(1 for m in SERIES_CATALOG.values() if m["source"] == "fred")
-        n_pending = sum(1 for m in SERIES_CATALOG.values() if m["source"] == "pending")
-        assert n_fred + n_pending == len(SERIES_CATALOG)
+        # да съвпада с броя на всички познати source типове.
+        from catalog.series import ALLOWED_SOURCES
+        n_by_source = sum(
+            1 for m in SERIES_CATALOG.values() if m["source"] in ALLOWED_SOURCES
+        )
+        assert n_by_source == len(SERIES_CATALOG), (
+            f"Series с source извън ALLOWED_SOURCES: "
+            f"{[k for k, m in SERIES_CATALOG.items() if m['source'] not in ALLOWED_SOURCES]}"
+        )
 
     def test_no_duplicate_fred_ids(self):
         """Два ключа с един FRED ID → data duplication + cache confusion."""
@@ -110,9 +115,11 @@ class TestPeerGroupSizes:
     """
 
     # Phase 2.5 (2026-04-17): двата оригинални singleton-а са разширени
-    # (hours, business_sentiment). Allowlist-ът е празен — ако бъдещ peer_group
-    # стане singleton, или ще добави companion, или ще го впише тук явно.
-    KNOWN_SINGLETON_PEER_GROUPS: frozenset[str] = frozenset()
+    # (hours, business_sentiment).
+    # TODO Phase 1.5 (2026-05-31): leading_indicators остава singleton (CB_LEI sam).
+    #   Кандидати за companion: NY Fed Recession Probability, Conference Board CEI/LAG,
+    #   или Empire State Mfg / Dallas Fed leading composite. Виж GAP-ANALYSIS.
+    KNOWN_SINGLETON_PEER_GROUPS: frozenset[str] = frozenset({"leading_indicators"})
 
     def test_all_peer_groups_have_min_members(self):
         """Всеки peer_group има ≥2 серии — с изключение на known singletons."""

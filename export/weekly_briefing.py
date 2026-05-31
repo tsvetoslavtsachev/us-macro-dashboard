@@ -62,13 +62,13 @@ from analysis.analog_matcher import classify_strength, STRENGTH_LABELS_BG
 from analysis.macro_vector import DIM_LABELS_BG, DIM_UNITS, STATE_VECTOR_DIMS
 
 
-LENS_ORDER = ["labor", "growth", "inflation", "liquidity"]
+LENS_ORDER = ["labor", "growth", "inflation", "liquidity", "housing"]
 LENS_LABEL_BG = {
-    "labor": "Трудов пазар",
-    "growth": "Растеж",
-    "inflation": "Инфлация",
-    "liquidity": "Ликвидност и кредит",
-    "housing": "Жилищен пазар",
+    "labor":     "Пазар на труда",
+    "growth":    "Растеж и активност",
+    "inflation": "Инфлация и цени",
+    "liquidity": "Монетарна политика и кредит",
+    "housing":   "Жилищен пазар",
 }
 
 # Default href prefix за series-ref линкове. Briefing-ът сочи към

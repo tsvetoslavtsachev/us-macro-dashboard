@@ -668,6 +668,112 @@ def main_fetch_confboard(args) -> None:
 
 
 # ============================================================
+# FETCH-ZILLOW MODE
+# ============================================================
+
+def main_fetch_zillow(args) -> None:
+    """Download Zillow CSV(s) и кешира резултата.
+
+    CC0 licensed данни — свободно за republish.
+    Refresh: monthly cycle (cache TTL 20 дни).
+    """
+    from sources.zillow_adapter import ZillowAdapter
+    from catalog.series import SERIES_CATALOG
+
+    print("\n" + "═" * 60)
+    print("  📊  Fetch Zillow (CC0 public CSV)  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print("═" * 60 + "\n")
+
+    # Извличаме всички zillow specs от каталога
+    specs: list[dict] = []
+    for key, meta in SERIES_CATALOG.items():
+        if meta.get("source") != "external":
+            continue
+        if meta.get("cache_file") != "data/zillow_cache.json":
+            continue
+        url = meta.get("zillow_url")
+        region = meta.get("zillow_region_name")
+        if not url or not region:
+            print(f"  ⚠ {key}: липсва zillow_url или zillow_region_name — skip")
+            continue
+        specs.append({"key": key, "url": url, "region_name": region})
+
+    if not specs:
+        print("⚠ Няма Zillow серии в каталога. Добави entry с source=external, "
+              "cache_file=data/zillow_cache.json, zillow_url, zillow_region_name.")
+        return
+
+    adapter = ZillowAdapter(base_dir=BASE_DIR)
+    print(f"🌐 Download Zillow CSVs ({len(specs)} серии)...")
+    results = adapter.fetch_many(specs, force=args.refresh)
+
+    for spec in specs:
+        key = spec["key"]
+        history = results.get(key) or {}
+        if not history:
+            print(f"  ❌ {key}: 0 obs (fetch fail-на, виж logs)")
+            continue
+        dates = sorted(history.keys())
+        latest = dates[-1]
+        latest_val = history[latest]
+        print(f"  ✅ {key}: {latest_val:,.0f} ({latest}) — {len(history)} obs от {dates[0]}")
+
+    print(f"\n📦 Cache: {adapter.cache_path}")
+    print("\n✅ Done!\n")
+
+
+# ============================================================
+# FETCH-HOUSING-SCRAPERS MODE (NAHB, MBA, NAR)
+# ============================================================
+
+def main_fetch_housing_scrapers(args) -> None:
+    """Scrape NAHB HMI + MBA Applications + NAR PHSI press releases.
+
+    ⚠ Phase B/architecture-first: parse_html() е stubbed (returns "pending").
+    Архитектурата е готова — adapter classes, cache structure, run.py wiring
+    и catalog entries. Реалната parse logic се добавя per source при нужда.
+
+    Когато се имплементира parse:
+      1. Override parse_html() в NAHBAdapter / MBAAdapter / NARAdapter
+      2. Промени catalog entries от source="pending" → source="external"
+         + cache_file="data/<source>_cache.json"
+    """
+    from sources.press_release_scraper import (
+        NAHBAdapter, MBAAdapter, NARAdapter,
+    )
+
+    print("\n" + "═" * 60)
+    print("  📊  Fetch housing scrapers (NAHB + MBA + NAR)  —  econ_v2")
+    print("═" * 60)
+    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
+    print("═" * 60 + "\n")
+
+    for AdapterCls in (NAHBAdapter, MBAAdapter, NARAdapter):
+        adapter = AdapterCls(base_dir=BASE_DIR)
+        print(f"🌐 {AdapterCls.SOURCE_NAME.upper()}: fetch_all (force={args.refresh})...")
+        results = adapter.fetch_all(force=args.refresh)
+        for key, parsed in results.items():
+            quality = parsed.get("parse_quality") or "—"
+            headline = parsed.get("headline")
+            month = parsed.get("month") or "—"
+            if quality == "ok" and headline is not None:
+                marker = "✅"
+                val_str = f"{headline}"
+            elif quality == "pending":
+                marker = "🔧"
+                val_str = "(parse stub — implement parse_html)"
+            else:
+                marker = "⚠"
+                val_str = f"quality={quality}"
+            print(f"  {marker} {key}: {val_str} [{month}]")
+        print(f"     cache: {adapter.cache_path}\n")
+
+    print("✅ Done!\n")
+
+
+# ============================================================
 # IMPORT-BLOOMBERG MODE
 # ============================================================
 
@@ -755,6 +861,20 @@ def _parse_args():
              "Изисква FIRECRAWL_API_KEY в .env.",
     )
     mode.add_argument(
+        "--fetch-zillow",
+        dest="fetch_zillow",
+        action="store_true",
+        help="Download Zillow ZHVI и сродни public CSV-та (CC0 licensed). "
+             "Без API key. Cache TTL 20 дни. Refresh policy: monthly.",
+    )
+    mode.add_argument(
+        "--fetch-housing-scrapers",
+        dest="fetch_housing_scrapers",
+        action="store_true",
+        help="Scrape NAHB HMI + MBA Applications + NAR PHSI press releases. "
+             "Phase B архитектура (parse_html() stub-нат — needs per-source impl).",
+    )
+    mode.add_argument(
         "--import-bloomberg",
         dest="import_bloomberg",
         action="store_true",
@@ -835,6 +955,10 @@ if __name__ == "__main__":
         main_fetch_ism(args)
     elif args.fetch_confboard:
         main_fetch_confboard(args)
+    elif args.fetch_zillow:
+        main_fetch_zillow(args)
+    elif args.fetch_housing_scrapers:
+        main_fetch_housing_scrapers(args)
     elif args.import_bloomberg:
         main_import_bloomberg(args)
     elif args.briefing:
