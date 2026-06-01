@@ -117,11 +117,205 @@ def _direction_colors(direction: str) -> tuple[str, str, str]:
     }.get(direction, ("#8b949e22", "#8b949e", "#8b949e44"))
 
 
+def _state_colors(state: str) -> tuple[str, str]:
+    """(hex, BG label) за cross-lens divergence state."""
+    return {
+        "both_up": ("#3fb950", "Двете нагоре"),
+        "both_down": ("#f85149", "Двете надолу"),
+        "a_up_b_down": ("#d29922", "Разнопосочни"),
+        "a_down_b_up": ("#d29922", "Разнопосочни"),
+        "transition": ("#8b949e", "Преход"),
+        "insufficient_data": ("#8b949e", "Липса данни"),
+    }.get(state, ("#8b949e", state or "—"))
+
+
+def _fmt_breadth(v) -> str:
+    if v is None or pd.isna(v):
+        return "—"
+    return f"{v * 100:.0f}%"
+
+
+def _render_cross_lens_section(cross_report) -> str:
+    """Cross-Lens Divergence — China-style pair cards (inline-styled, self-contained)."""
+    pairs = getattr(cross_report, "pairs", None) or []
+    if not pairs:
+        return ""
+    cards = []
+    for p in pairs:
+        color, state_lbl = _state_colors(getattr(p, "state", "") or "")
+        name = _html.escape(getattr(p, "name_bg", "") or "")
+        interp = _html.escape(getattr(p, "interpretation", "") or "")
+        a_lbl = _html.escape(getattr(p, "slot_a_label", "") or "")
+        b_lbl = _html.escape(getattr(p, "slot_b_label", "") or "")
+        cards.append(f"""
+        <div style="background:#0d1117;border:1px solid #30363d;border-left:3px solid {color};border-radius:8px;padding:14px 16px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="color:#f0f6fc;font-size:14px;font-weight:600">{name}</span>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:{color}22;color:{color};border:1px solid {color}44;white-space:nowrap">{state_lbl}</span>
+          </div>
+          <div style="display:flex;gap:16px;margin-bottom:6px;flex-wrap:wrap">
+            <span style="color:#8b949e;font-size:12px">{a_lbl}: <b style="color:#c9d1d9">{_fmt_breadth(getattr(p, 'breadth_a', None))}</b></span>
+            <span style="color:#8b949e;font-size:12px">{b_lbl}: <b style="color:#c9d1d9">{_fmt_breadth(getattr(p, 'breadth_b', None))}</b></span>
+          </div>
+          <div style="color:#8b949e;font-size:12px;line-height:1.5">{interp}</div>
+        </div>""")
+    return f"""
+    <div class="lens-bars">
+      <h3>Cross-Lens Divergence</h3>
+      {''.join(cards)}
+    </div>"""
+
+
+def _render_anomalies_section(anomaly_report) -> str:
+    """Top Anomalies — China-style таблица (inline-styled)."""
+    top = getattr(anomaly_report, "top", None) or []
+    if not top:
+        return ""
+    total = getattr(anomaly_report, "total_flagged", len(top))
+    rows = []
+    for a in top[:10]:
+        z = getattr(a, "z_score", 0) or 0.0
+        zc = "#f85149" if z > 0 else "#58a6ff"
+        d = getattr(a, "direction", "") or ""
+        arrow = "▲" if d == "up" else ("▼" if d == "down" else "•")
+        name = _html.escape(getattr(a, "series_name_bg", "") or getattr(a, "series_key", "") or "")
+        sid = _html.escape(getattr(a, "series_key", "") or "")
+        ext = ""
+        if getattr(a, "is_new_extreme", False):
+            ed = (getattr(a, "new_extreme_direction", "") or "").upper()
+            ext = f' <span style="color:#d29922;font-size:10px;font-weight:700">NEW-{ed}</span>'
+        rows.append(f"""
+        <tr style="border-bottom:1px solid #21262d">
+          <td style="padding:7px 8px;color:#e6edf3;font-size:13px">{name}{ext}<div style="color:#8b949e;font-size:10px">{sid}</div></td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:{zc};font-size:13px;white-space:nowrap">{arrow} {z:+.2f}σ</td>
+        </tr>""")
+    return f"""
+    <div class="lens-bars">
+      <h3>Top Anomalies ({len(top)}/{total})</h3>
+      <table style="width:100%;border-collapse:collapse">{''.join(rows)}</table>
+    </div>"""
+
+
+def _render_data_quality_section() -> str:
+    return """
+    <div class="lens-bars">
+      <h3>Бележки за данните</h3>
+      <div style="color:#8b949e;font-size:12px;line-height:1.6">
+        Композитът е mean breadth_positive × 100 на наличните lens-ове. Z-score за аномалиите е спрямо 5-годишен прозорец (|z|&gt;2 = екстремно четене спрямо peer групата). Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
+      </div>
+    </div>"""
+
+
+def _fmt_val(v, decimals: int = 2) -> str:
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return "—"
+    try:
+        return f"{float(v):.{decimals}f}"
+    except Exception:
+        return str(v)
+
+
+def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
+    """Top серии в лещата по |z|, със стойност/percentile/дата (China-style readings)."""
+    from catalog.series import series_by_lens
+    from core.scorer import score_series
+
+    rows = []
+    for meta in series_by_lens(lens):
+        key = meta.get("_key")
+        s = snapshot.get(key)
+        if s is None:
+            continue
+        try:
+            sd = score_series(
+                s, history_start=meta.get("historical_start", "2000-01-01"),
+                invert=bool(meta.get("invert", False)), name=meta.get("name_bg", key),
+            )
+        except Exception:
+            continue
+        if sd.get("current_value") is None:
+            continue
+        rows.append({
+            "label": meta.get("name_bg", key),
+            "value": sd.get("current_value"),
+            "percentile": sd.get("percentile"),
+            "date": sd.get("last_date"),
+            "absz": abs(sd.get("z_score") or 0.0),
+        })
+    rows.sort(key=lambda r: r["absz"], reverse=True)
+    return rows[:top_n]
+
+
+def _render_lens_cards(exec_snapshot, snapshot) -> str:
+    """China-style lens cards: header (icon+label+score) + score bar + direction
+    badge + readings table (показател/стойност/percentile/дата)."""
+    cards = []
+    for row in exec_snapshot.lens_rows:
+        lens = row.lens
+        label = LENS_LABEL_BG.get(lens, lens)
+        icon = LENS_ICON.get(lens, "•")
+        score = _lens_score(row)
+        sc_color = _score_color(score)
+        sc_pct = 0 if pd.isna(score) else max(0, min(100, score))
+        score_disp = "—" if pd.isna(score) else f"{score:.1f}"
+        dir_bg, dir_fg, dir_bd = _direction_colors(row.direction)
+        dir_lbl = _direction_label(row.direction)
+        anomaly_note = f" · {row.anomaly_count} аном." if getattr(row, "anomaly_count", 0) else ""
+
+        rows_html = ""
+        for rd in (_lens_readings(lens, snapshot) if snapshot is not None else []):
+            pct = rd["percentile"]
+            pct_v = 50.0 if pct is None or pd.isna(pct) else max(0.0, min(100.0, pct))
+            date_str = str(rd["date"])[:10] if rd["date"] else ""
+            lbl = _html.escape(str(rd["label"]))
+            rows_html += f"""
+            <tr style="border-top:1px solid #21262d">
+              <td style="padding:4px;color:#e6edf3;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
+              <td style="padding:4px;text-align:right;color:#c9d1d9;font-weight:600">{_fmt_val(rd['value'])}</td>
+              <td style="padding:4px;text-align:center;white-space:nowrap"><span style="display:inline-block;width:32px;height:5px;background:#21262d;border-radius:3px;vertical-align:middle;overflow:hidden"><span style="display:block;width:{pct_v:.0f}%;height:100%;background:{sc_color}"></span></span> <span style="color:#8b949e;font-size:10px">{pct_v:.0f}</span></td>
+              <td style="padding:4px;text-align:right;color:#8b949e;font-size:10px;white-space:nowrap">{date_str}</td>
+            </tr>"""
+        table_html = ""
+        if rows_html:
+            table_html = f"""
+            <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">
+              <thead><tr style="color:#8b949e">
+                <th style="text-align:left;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Показател</th>
+                <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Стойност</th>
+                <th style="text-align:center;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Pctl</th>
+                <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Дата</th>
+              </tr></thead>
+              <tbody>{rows_html}</tbody>
+            </table>"""
+        cards.append(f"""
+        <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:18px">{icon}</span><span style="color:#f0f6fc;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{_html.escape(label)}">{_html.escape(label)}</span></span>
+            <span style="font-size:22px;font-weight:800;color:{sc_color};flex:0 0 auto">{score_disp}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:6px;background:#21262d;border-radius:3px;overflow:hidden"><div style="width:{sc_pct:.0f}%;height:100%;background:{sc_color};border-radius:3px"></div></div>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:{dir_bg};color:{dir_fg};border:1px solid {dir_bd};white-space:nowrap">{dir_lbl}{anomaly_note}</span>
+          </div>
+          {table_html}
+        </div>""")
+    return f"""
+    <div class="lens-bars">
+      <h3>По lens-ове</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px">
+        {''.join(cards)}
+      </div>
+    </div>"""
+
+
 def _render_html(
     today: date,
     composite: float,
     exec_snapshot,
     deep_link: Optional[str] = "briefing_deep.html",
+    cross_report=None,
+    anomaly_report=None,
+    snapshot=None,
 ) -> str:
     """Render single-page scoreboard HTML."""
     composite_color = _score_color(composite)
@@ -131,36 +325,8 @@ def _render_html(
     # Score circle
     score_str = "—" if pd.isna(composite) else f"{composite:.1f}"
 
-    # Lens bars
-    bars_html_parts: list[str] = []
-    for row in exec_snapshot.lens_rows:
-        lens = row.lens
-        label = LENS_LABEL_BG.get(lens, lens)
-        icon = LENS_ICON.get(lens, "•")
-        score = _lens_score(row)
-        sc_color = _score_color(score)
-        sc_pct = 0 if pd.isna(score) else max(0, min(100, score))
-        score_disp = "—" if pd.isna(score) else f"{score:.1f}"
-
-        dir_bg, dir_fg, dir_bd = _direction_colors(row.direction)
-        dir_lbl = _direction_label(row.direction)
-
-        anomaly_note = ""
-        if row.anomaly_count > 0:
-            anomaly_note = f' <span style="color:#d29922;font-size:11px">· {row.anomaly_count} anomal.</span>'
-
-        bars_html_parts.append(f"""
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="font-size:14px;flex:0 0 20px">{icon}</span>
-          <span style="color:#e6edf3;font-size:13px;flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{_html.escape(label)}">{_html.escape(label)}</span>
-          <span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:10px;background:{dir_bg};color:{dir_fg};border:1px solid {dir_bd};letter-spacing:0.3px">{dir_lbl}</span>
-          <div style="flex:1 1 80px;height:8px;background:#21262d;border-radius:4px;overflow:hidden">
-            <div style="width:{sc_pct:.0f}%;height:100%;background:{sc_color};border-radius:4px"></div>
-          </div>
-          <span style="font-size:14px;font-weight:700;color:{sc_color};flex:0 0 45px;text-align:right">{score_disp}</span>
-          {anomaly_note}
-        </div>
-        """)
+    # Lens cards (China-style: header + score bar + direction + readings table)
+    lens_cards_html = _render_lens_cards(exec_snapshot, snapshot)
 
     # Narrative (от exec_snapshot)
     narrative_html = ""
@@ -180,6 +346,11 @@ def _render_html(
     deep_btn = ""
     if deep_link:
         deep_btn = f'<a href="{deep_link}" style="display:inline-block;padding:8px 16px;background:#1f6feb;color:white;text-decoration:none;border-radius:6px;font-size:13px;font-weight:500;margin-top:8px">За подробен анализ →</a>'
+
+    # China-style секции (данните вече са изчислени в generate_quick_briefing)
+    cross_lens_html = _render_cross_lens_section(cross_report) if cross_report is not None else ""
+    anomalies_html = _render_anomalies_section(anomaly_report) if anomaly_report is not None else ""
+    data_quality_html = _render_data_quality_section()
 
     return f"""<!DOCTYPE html>
 <html lang="bg">
@@ -284,16 +455,19 @@ body {{
       </div>
     </div>
 
-    <div class="lens-bars">
-      <h3>По lens-ове</h3>
-      {''.join(bars_html_parts)}
-    </div>
+    {lens_cards_html}
+
+    {cross_lens_html}
 
     <div class="narrative-block">
       <h3>Какво виждаме</h3>
       {narrative_html or '<div class="narrative-item">Няма narrative — exec snapshot е празен.</div>'}
       {signals_html}
     </div>
+
+    {anomalies_html}
+
+    {data_quality_html}
 
     <div class="footer">
       <strong>US Macro Dashboard</strong> — Quick scoreboard (China-style headline view).<br>
@@ -339,7 +513,11 @@ def generate_quick_briefing(
 
     composite = _composite_score(exec_snapshot)
 
-    html_out = _render_html(today, composite, exec_snapshot, deep_link=deep_link)
+    html_out = _render_html(
+        today, composite, exec_snapshot, deep_link=deep_link,
+        cross_report=cross_report, anomaly_report=anomaly_report,
+        snapshot=snapshot,
+    )
 
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
