@@ -65,6 +65,15 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python run.py --export-context --no-browser
 
+      # ── AI-consumption слой (Фаза 4 / C3) ──────────────────────────────────
+      - name: Export API JSON (macro_state + series_data)
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python export_api.py --years 10
+
+      - name: Assemble latest/ AI bundle (context.md + data.json + manifest.json)
+        run: python export/build_latest.py
+
       - name: Prepare Pages site
         run: |
           mkdir -p _site
@@ -79,7 +88,11 @@ jobs:
           # копирай и двата вида briefings (deep + quick) за history
           cp output/briefing_*.html _site/ 2>/dev/null || true
           cp output/briefing_context_*.md _site/ 2>/dev/null || true
-          ls -la _site/
+          # стабилен /latest/ AI-consumption слой (context.md + data.json + manifest.json + series.json)
+          mkdir -p _site/latest _site/api
+          cp output/latest/* _site/latest/ 2>/dev/null || true
+          cp output/api/macro_state.json output/api/series_data.json _site/api/ 2>/dev/null || true
+          ls -la _site/ _site/latest/
 
       - name: Upload briefing artifact (90d download)
         uses: actions/upload-artifact@v4
