@@ -58,7 +58,9 @@ jobs:
       - name: Generate HTML briefing
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python run.py --briefing --no-browser
+        # --with-analogs: Historical Analog Engine секция в deep-а (fetch на 11 ANALOG_*
+        # серии 1976+; degrade-ва gracefully ако fetch се провали → секцията се пропуска).
+        run: python run.py --briefing --with-analogs --no-browser
 
       - name: Generate Markdown context
         env:
