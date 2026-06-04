@@ -222,7 +222,7 @@ def _render_header(today, as_of, snapshot, lens_reports, nc_report, anomaly_repo
     n_anomalies = anomaly_report.total_flagged
 
     # Composite score circle (China-style headline). NaN → "—" в сиво.
-    composite = _composite_score(exec_snapshot) if exec_snapshot is not None else float("nan")
+    composite = _composite_score(exec_snapshot, snapshot) if exec_snapshot is not None else float("nan")
     score_color = _score_color(composite)
     score_str = "—" if composite != composite else f"{composite:.1f}"
 

@@ -129,6 +129,64 @@ def _infer_yoy_periods(series: pd.Series) -> int:
 
 
 # ============================================================
+# TRANSFORM + ROBUST STANDARDIZATION (lens health scoring)
+# ============================================================
+# Виж LENS_SCORING_METHODOLOGY.md — единен примитив за трите икономики.
+
+def apply_transform(series: pd.Series, transform: str) -> pd.Series:
+    """Прилага декларираната каталожна трансформация върху сурова серия.
+
+    level → as-is; yoy_pct/mom_pct/qoq_pct → процентна промяна; first_diff → delta;
+    z_score → full-sample z. Това гаси "breadth върху сурови нива" (дефект B):
+    номинално растящите серии (CPI индекс, M2 ниво) се четат като ТЕМП, не ниво.
+    """
+    s = series.dropna()
+    if s.empty:
+        return s
+    if transform == "yoy_pct":
+        return yoy_pct(s)
+    if transform == "mom_pct":
+        return mom_pct(s)
+    if transform == "qoq_pct":
+        return s.pct_change(periods=3) * 100
+    if transform == "first_diff":
+        return first_diff(s)
+    if transform == "z_score":
+        return z_score(s)
+    return s  # level
+
+
+def robust_stats_latest(
+    series: pd.Series,
+    window_years: int = 10,
+    min_obs: int = 36,
+) -> Optional[tuple[float, float, float]]:
+    """Робастна норма на последната точка спрямо плъзгащ прозорец.
+
+    Връща (latest_value, median, scale), където scale = 1.4826 · MAD —
+    σ-еквивалент, устойчив на кратки outlier-и (COVID). Прозорецът е последните
+    `window_years` години ДО последното наблюдение (работи и за trim-нати snapshot-и).
+
+    None ако серията има < min_obs точки в прозореца (твърде малко за норма).
+    scale=0 (без вариация) → връща scale 0.0; повикващият третира като "на нормата".
+    """
+    s = series.dropna()
+    if s.empty:
+        return None
+    if isinstance(s.index, pd.DatetimeIndex):
+        cutoff = s.index[-1] - pd.DateOffset(years=window_years)
+        w = s[s.index >= cutoff]
+    else:
+        w = s
+    if len(w) < min_obs:
+        return None
+    med = float(w.median())
+    mad = float((w - med).abs().median())
+    scale = 1.4826 * mad
+    return float(s.iloc[-1]), med, scale
+
+
+# ============================================================
 # BREADTH PRIMITIVES (peer group level)
 # ============================================================
 

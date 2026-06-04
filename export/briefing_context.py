@@ -42,6 +42,7 @@ from core.display import (
     fmt_value,
 )
 from core.primitives import _infer_yoy_periods
+from analysis.health import lens_health
 
 
 # ============================================================
@@ -145,7 +146,7 @@ def generate_briefing_context(
     """
     sections: list[str] = []
     sections.append(_render_header(today, lens_reports, cross_report, anomaly_report))
-    sections.append(_render_executive_summary(lens_reports, anomaly_report))
+    sections.append(_render_executive_summary(lens_reports, anomaly_report, snapshot))
     sections.append(_render_cross_spreads(snapshot, today, history_years))
     sections.append(_render_themes(lens_reports, snapshot, history_years))
     sections.append(_render_cross_lens(cross_report, snapshot))
@@ -364,16 +365,27 @@ def _render_header(today, lens_reports, cross_report, anomaly_report) -> str:
     return "\n".join(lines)
 
 
-def _render_executive_summary(lens_reports, anomaly_report) -> str:
+def _render_executive_summary(lens_reports, anomaly_report, snapshot=None) -> str:
+    # Заглавният показател е HEALTH score (робастен z + полярност + 10-г. прозорец,
+    # 50=норма) — виж ../macro-satellite/LENS_SCORING_METHODOLOGY.md. Breadth остава
+    # като второстепенна прозрачна колона.
+    _dir_bg = {"expanding": "разширяване", "contracting": "свиване",
+               "mixed": "смесено", "insufficient_data": "—"}
     lines = ["## 1. Executive Summary", ""]
-    lines.append("| Тема | Посока (general) | Breadth ↑ (avg) | Аномалии (|z|>2) |")
-    lines.append("|---|---|---|---|")
+    lines.append("| Тема | Посока (health) | Здраве (0–100) | Breadth ↑ (avg) | Аномалии (|z|>2) |")
+    lines.append("|---|---|---|---|---|")
 
     for lens in LENS_ORDER:
         rep = lens_reports.get(lens)
         if rep is None:
             continue
-        # Aggregate breadth across peer groups
+        # Health score + посока (единен примитив)
+        h = lens_health(lens, snapshot) if snapshot is not None else {}
+        score = h.get("score")
+        score_str = f"{score:.0f}" if score is not None else "—"
+        general = _dir_bg.get(h.get("direction"), "—")
+
+        # Breadth ↑ (avg) — второстепенно
         breadths = [
             pg.breadth_positive for pg in rep.peer_groups
             if not (isinstance(pg.breadth_positive, float) and math.isnan(pg.breadth_positive))
@@ -381,22 +393,11 @@ def _render_executive_summary(lens_reports, anomaly_report) -> str:
         avg_breadth = (sum(breadths) / len(breadths)) if breadths else None
         avg_str = f"{avg_breadth*100:.0f}%" if avg_breadth is not None else "—"
 
-        # Direction summary across peer groups
-        dir_counts = {"expanding": 0, "contracting": 0, "mixed": 0, "insufficient_data": 0}
-        for pg in rep.peer_groups:
-            dir_counts[pg.direction] = dir_counts.get(pg.direction, 0) + 1
-        if dir_counts["expanding"] > dir_counts["contracting"]:
-            general = "разширяване"
-        elif dir_counts["contracting"] > dir_counts["expanding"]:
-            general = "свиване"
-        else:
-            general = "смесено"
-
         # Anomalies in this lens
         n_anom = len(anomaly_report.by_lens.get(lens, []))
 
         lines.append(
-            f"| {LENS_LABEL_BG.get(lens, lens)} | {general} | {avg_str} | {n_anom} |"
+            f"| {LENS_LABEL_BG.get(lens, lens)} | {general} | {score_str} | {avg_str} | {n_anom} |"
         )
     return "\n".join(lines)
 

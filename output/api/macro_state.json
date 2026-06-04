@@ -1,24 +1,25 @@
 {
   "region": "US",
-  "as_of_date": "2026-05-30",
-  "generated_at": "2026-05-30T09:21:37.657843Z",
+  "as_of_date": "2026-06-04",
+  "generated_at": "2026-06-04T17:49:41.150603Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
     "css_class": "regime-stag",
-    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Inflation — breadth 76% (разширяване), 12 аномалии, 11 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: DGORDER, M2, C_AND_I_LOANS (нови 5-годишни екстремуми).",
+    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Инфлация и цени — breadth 76% (разширяване), 12 аномалии, 11 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: DGORDER, M2, USSTHPI (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: DGORDER z=+2.90 · NEW-5Y-MAX",
-      "15 нови екстремуми в top-15 (lookback 5г.)",
+      "14 нови екстремуми в top-15 (lookback 5г.)",
       "Активни двойки: Stagflation test=both_up; Growth × Labor=a_up_b_down; Inflation anchoring=a_up_b_down"
     ],
     "primary_driver": "stagflation_test"
   },
   "lenses": {
     "labor": {
-      "score": 65.6,
-      "direction": "expanding",
-      "breadth_pct": 65.60000000000001,
+      "score": 35.5,
+      "health_z": -0.597,
+      "direction": "contracting",
+      "breadth_pct": 18.5,
       "anomalies_count": 4,
       "new_extreme_count": 3,
       "intra_divergences": [
@@ -193,9 +194,10 @@
       ]
     },
     "growth": {
-      "score": 56.7,
-      "direction": "expanding",
-      "breadth_pct": 56.699999999999996,
+      "score": 45.4,
+      "health_z": -0.186,
+      "direction": "mixed",
+      "breadth_pct": 44.4,
       "anomalies_count": 5,
       "new_extreme_count": 5,
       "intra_divergences": [
@@ -211,6 +213,20 @@
           "pair_id": "growth__consumer_sentiment__vs__hard_activity",
           "slot_a_label": "consumer_sentiment",
           "slot_b_label": "hard_activity",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "growth",
+          "group_a": "consumer_sentiment",
+          "group_b": "housing_supply",
+          "breadth_a": 0.0,
+          "breadth_b": 0.75,
+          "diff": -0.75,
+          "interpretation": "housing_supply е по-силна (75%) отколкото consumer_sentiment (0%) — разминаване +75%.",
+          "name_bg": "consumer_sentiment vs housing_supply",
+          "pair_id": "growth__consumer_sentiment__vs__housing_supply",
+          "slot_a_label": "consumer_sentiment",
+          "slot_b_label": "housing_supply",
           "state": "a_down_b_up"
         },
         {
@@ -240,41 +256,14 @@
           "slot_a_label": "consumer_sentiment",
           "slot_b_label": "sectoral_employment",
           "state": "a_down_b_up"
-        },
-        {
-          "lens": "growth",
-          "group_a": "consumer_sentiment",
-          "group_b": "leading",
-          "breadth_a": 0.0,
-          "breadth_b": 0.5,
-          "diff": -0.5,
-          "interpretation": "leading е по-силна (50%) отколкото consumer_sentiment (0%) — разминаване +50%.",
-          "name_bg": "consumer_sentiment vs leading",
-          "pair_id": "growth__consumer_sentiment__vs__leading",
-          "slot_a_label": "consumer_sentiment",
-          "slot_b_label": "leading",
-          "state": "a_down_b_up"
-        },
-        {
-          "lens": "growth",
-          "group_a": "hard_activity",
-          "group_b": "leading",
-          "breadth_a": 1.0,
-          "breadth_b": 0.5,
-          "diff": 0.5,
-          "interpretation": "hard_activity е по-силна (100%) отколкото leading (50%) — разминаване +50%.",
-          "name_bg": "hard_activity vs leading",
-          "pair_id": "growth__hard_activity__vs__leading",
-          "slot_a_label": "hard_activity",
-          "slot_b_label": "leading",
-          "state": "a_up_b_down"
         }
       ]
     },
     "inflation": {
-      "score": 76.2,
-      "direction": "expanding",
-      "breadth_pct": 76.2,
+      "score": 34.7,
+      "health_z": -0.631,
+      "direction": "contracting",
+      "breadth_pct": 22.2,
       "anomalies_count": 12,
       "new_extreme_count": 11,
       "intra_divergences": [
@@ -421,9 +410,10 @@
       ]
     },
     "liquidity": {
-      "score": 36.1,
+      "score": 52.8,
+      "health_z": 0.113,
       "direction": "mixed",
-      "breadth_pct": 36.1,
+      "breadth_pct": 60.0,
       "anomalies_count": 3,
       "new_extreme_count": 2,
       "intra_divergences": [
@@ -443,20 +433,6 @@
         },
         {
           "lens": "liquidity",
-          "group_a": "money_supply",
-          "group_b": "term_structure",
-          "breadth_a": 0.667,
-          "breadth_b": 0.0,
-          "diff": 0.667,
-          "interpretation": "money_supply е по-силна (67%) отколкото term_structure (0%) — разминаване +67%.",
-          "name_bg": "money_supply vs term_structure",
-          "pair_id": "liquidity__money_supply__vs__term_structure",
-          "slot_a_label": "money_supply",
-          "slot_b_label": "term_structure",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
           "group_a": "banking_credit",
           "group_b": "policy_rates",
           "breadth_a": 0.5,
@@ -467,20 +443,6 @@
           "pair_id": "liquidity__banking_credit__vs__policy_rates",
           "slot_a_label": "banking_credit",
           "slot_b_label": "policy_rates",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "banking_credit",
-          "group_b": "term_structure",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "banking_credit е по-силна (50%) отколкото term_structure (0%) — разминаване +50%.",
-          "name_bg": "banking_credit vs term_structure",
-          "pair_id": "liquidity__banking_credit__vs__term_structure",
-          "slot_a_label": "banking_credit",
-          "slot_b_label": "term_structure",
           "state": "a_up_b_down"
         },
         {
@@ -499,20 +461,6 @@
         },
         {
           "lens": "liquidity",
-          "group_a": "credit_spreads",
-          "group_b": "term_structure",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "credit_spreads е по-силна (50%) отколкото term_structure (0%) — разминаване +50%.",
-          "name_bg": "credit_spreads vs term_structure",
-          "pair_id": "liquidity__credit_spreads__vs__term_structure",
-          "slot_a_label": "credit_spreads",
-          "slot_b_label": "term_structure",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
           "group_a": "financial_conditions",
           "group_b": "policy_rates",
           "breadth_a": 0.5,
@@ -527,15 +475,15 @@
         },
         {
           "lens": "liquidity",
-          "group_a": "financial_conditions",
+          "group_a": "money_supply",
           "group_b": "term_structure",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "financial_conditions е по-силна (50%) отколкото term_structure (0%) — разминаване +50%.",
-          "name_bg": "financial_conditions vs term_structure",
-          "pair_id": "liquidity__financial_conditions__vs__term_structure",
-          "slot_a_label": "financial_conditions",
+          "breadth_a": 0.667,
+          "breadth_b": 0.25,
+          "diff": 0.417,
+          "interpretation": "money_supply е по-силна (67%) отколкото term_structure (25%) — разминаване +42%.",
+          "name_bg": "money_supply vs term_structure",
+          "pair_id": "liquidity__money_supply__vs__term_structure",
+          "slot_a_label": "money_supply",
           "slot_b_label": "term_structure",
           "state": "a_up_b_down"
         }
@@ -574,6 +522,21 @@
       "narrative_hint": "M2 YoY → исторически корелира със inflation с 12-24 месечен lag. Но velocity-то варира; не е automatic signal."
     },
     {
+      "series_id": "USSTHPI",
+      "name_bg": "FHFA House Price Index (Q, NSA)",
+      "lens": [
+        "housing"
+      ],
+      "peer_group": "housing_prices",
+      "z_score": 2.697,
+      "direction": "up",
+      "current_value": 713.09,
+      "last_date": "2026-01-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "По-широк от Case-Shiller (вкл. all GSE-mortgaged transactions). Покрива 50 щата + 400 metros."
+    },
+    {
       "series_id": "C_AND_I_LOANS",
       "name_bg": "Търговски и индустриални кредити (C&I)",
       "lens": [
@@ -605,6 +568,21 @@
       "narrative_hint": "Known за dramatic bottoms. Силно корелира с election cycles, gas prices и post-2024 показва политически bias (D vs R) — гледай breadth с Conference Board/OECD proxy, не individual прочит."
     },
     {
+      "series_id": "HPIPONM226S",
+      "name_bg": "FHFA HPI — Monthly Purchase-Only (SA)",
+      "lens": [
+        "housing"
+      ],
+      "peer_group": "housing_prices",
+      "z_score": 2.48,
+      "direction": "up",
+      "current_value": 441.55,
+      "last_date": "2026-03-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "Monthly FHFA версия. Само purchase transactions (без refi appraisals). По-чист от refi-bias."
+    },
+    {
       "series_id": "CPI_SHELTER",
       "name_bg": "CPI — жилища (shelter)",
       "lens": [
@@ -618,6 +596,21 @@
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Shelter е ~1/3 от CPI. OER методология lag-ва market rents с 12-18 месеца. При сривове на пазарни ренти shelter CPI упорито остава висок — дебатен signal."
+    },
+    {
+      "series_id": "CSUSHPISA",
+      "name_bg": "Case-Shiller US National HPI (SA)",
+      "lens": [
+        "housing"
+      ],
+      "peer_group": "housing_prices",
+      "z_score": 2.4,
+      "direction": "up",
+      "current_value": 331.265,
+      "last_date": "2026-03-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Главен ценови benchmark. Repeat-sales методология; ~2 месеца lag. National композит на 9 census divisions."
     },
     {
       "series_id": "CPI_SERVICES",
@@ -648,52 +641,6 @@
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Не е inflation-adjusted — внимавай при висока inflation (номинален ръст подвеждащ)."
-    },
-    {
-      "series_id": "PPICORE",
-      "name_bg": "PPI Core (Final Demand без храни и енергия)",
-      "lens": [
-        "inflation"
-      ],
-      "peer_group": "core_measures",
-      "z_score": 2.32,
-      "direction": "up",
-      "current_value": 267.86,
-      "last_date": "2026-04-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "PPI core води CPI core с 1-3 месеца. Недостатъчно проследяван — силен индикатор при конвергенция или дивергенция с CPI core."
-    },
-    {
-      "series_id": "PPIFIS",
-      "name_bg": "PPI — Final Demand (производствени цени)",
-      "lens": [
-        "inflation"
-      ],
-      "peer_group": "headline_measures",
-      "z_score": 2.314,
-      "direction": "up",
-      "current_value": 156.496,
-      "last_date": "2026-04-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "Производствени цени → consumer prices с 1-3 месечен lag. Водещ за CPI при трендови промени."
-    },
-    {
-      "series_id": "LABOR_SHARE_NBS",
-      "name_bg": "Labor share — нефермерски бизнес",
-      "lens": [
-        "labor",
-        "inflation"
-      ],
-      "peer_group": "labor_share",
-      "z_score": -2.309,
-      "direction": "down",
-      "current_value": 95.707,
-      "last_date": "2026-01-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "min",
-      "narrative_hint": "BLS productivity data. Cyclical fluctuations, но структурният trend е низходящ."
     }
   ],
   "cross_lens_divergences": [

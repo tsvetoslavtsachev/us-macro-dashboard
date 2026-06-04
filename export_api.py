@@ -37,6 +37,7 @@ from sources.fred_adapter import FredAdapter
 from core.scorer import score_series
 from core.display import change_kind, compute_change, fmt_change, fmt_value
 from analysis.breadth import compute_lens_breadth
+from analysis.health import lens_health
 from analysis.divergence import compute_cross_lens_divergence, compute_intra_lens_divergence
 from analysis.anomaly import compute_anomalies
 from analysis.non_consensus import compute_non_consensus
@@ -189,25 +190,20 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             intra_divs[lens].append(base)
 
     # ── Per-lens summary ────────────────────────────────────────────────────
+    # Score идва от единния health примитив (робастен z + полярност + 10-г.
+    # прозорец) — виж LENS_SCORING_METHODOLOGY.md. breadth_pct остава като
+    # второстепенна прозрачна цифра. anomaly/new_extreme идват от exec_summary.
     lenses_out = {}
     for lens in LENSES:
-        br = lens_reports[lens]
-        # Намираме LensRegimeRow от executive summary
         exec_row = next(
             (r for r in exec_summary.lens_rows if r.lens == lens), None
         )
-        # Изчисляваме score от breadth_agg (0..1 → 0..100)
-        # breadth_agg = дял на серии с позитивна тенденция
-        breadth_agg = exec_row.breadth_agg if exec_row else None
-        if breadth_agg is not None and not (isinstance(breadth_agg, float) and math.isnan(breadth_agg)):
-            score = round(breadth_agg * 100, 1)
-        else:
-            score = None
-        direction = exec_row.direction if exec_row else "insufficient_data"
+        h = lens_health(lens, snapshot)
         lenses_out[lens] = {
-            "score": _clean(score),
-            "direction": direction,
-            "breadth_pct": _clean(breadth_agg * 100 if breadth_agg is not None and not (isinstance(breadth_agg, float) and math.isnan(breadth_agg)) else None),
+            "score": _clean(h["score"]),
+            "health_z": _clean(h["health_z"]),
+            "direction": h["direction"],
+            "breadth_pct": _clean(h["breadth_pct"]),
             "anomalies_count": exec_row.anomaly_count if exec_row else 0,
             "new_extreme_count": exec_row.new_extreme_count if exec_row else 0,
             "intra_divergences": intra_divs.get(lens, []),

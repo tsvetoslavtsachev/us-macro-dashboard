@@ -30,6 +30,7 @@ from analysis.executive import (
 # за да не drift-ваме от deep briefing-а
 from export.weekly_briefing import LENS_ORDER
 from analysis.breadth import compute_lens_breadth
+from analysis.health import lens_health
 from analysis.divergence import compute_cross_lens_divergence
 from analysis.anomaly import compute_anomalies
 from analysis.non_consensus import compute_non_consensus
@@ -79,8 +80,13 @@ def _regime_badge_colors(regime_key: str) -> tuple[str, str, str]:
     return palette.get(css, palette["regime-trans"])
 
 
-def _composite_score(exec_snapshot) -> float:
-    """Mean breadth_agg × 100 от lens_rows (skip-ва None стойностите)."""
+def _composite_score(exec_snapshot, snapshot=None) -> float:
+    """Mean lens health score (0–100). С `snapshot` → единният health примитив
+    (робастен z + полярност); без него → fallback към стария breadth_agg×100."""
+    if snapshot is not None:
+        vals = [s for s in (lens_health(r.lens, snapshot).get("score")
+                            for r in exec_snapshot.lens_rows) if s is not None]
+        return (sum(vals) / len(vals)) if vals else float("nan")
     vals = [
         r.breadth_agg for r in exec_snapshot.lens_rows
         if r.breadth_agg is not None and not pd.isna(r.breadth_agg)
@@ -90,8 +96,11 @@ def _composite_score(exec_snapshot) -> float:
     return sum(vals) / len(vals) * 100.0
 
 
-def _lens_score(lens_row) -> float:
-    """breadth_agg × 100 за един lens row."""
+def _lens_score(lens_row, snapshot=None) -> float:
+    """Lens health score (0–100). С `snapshot` → health примитив; иначе breadth fallback."""
+    if snapshot is not None:
+        s = lens_health(lens_row.lens, snapshot).get("score")
+        return float(s) if s is not None else float("nan")
     if lens_row.breadth_agg is None or pd.isna(lens_row.breadth_agg):
         return float("nan")
     return float(lens_row.breadth_agg) * 100.0
@@ -254,12 +263,14 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
         lens = row.lens
         label = LENS_LABEL_BG.get(lens, lens)
         icon = LENS_ICON.get(lens, "•")
-        score = _lens_score(row)
+        _h = lens_health(row.lens, snapshot) if snapshot is not None else None
+        score = _lens_score(row, snapshot)
+        _dir = _h["direction"] if _h else row.direction
         sc_color = _score_color(score)
         sc_pct = 0 if pd.isna(score) else max(0, min(100, score))
         score_disp = "—" if pd.isna(score) else f"{score:.1f}"
-        dir_bg, dir_fg, dir_bd = _direction_colors(row.direction)
-        dir_lbl = _direction_label(row.direction)
+        dir_bg, dir_fg, dir_bd = _direction_colors(_dir)
+        dir_lbl = _direction_label(_dir)
         anomaly_note = f" · {row.anomaly_count} аном." if getattr(row, "anomaly_count", 0) else ""
 
         rows_html = ""
@@ -511,7 +522,7 @@ def generate_quick_briefing(
         cross_report, lens_reports, anomaly_report, nc_report,
     )
 
-    composite = _composite_score(exec_snapshot)
+    composite = _composite_score(exec_snapshot, snapshot)
 
     html_out = _render_html(
         today, composite, exec_snapshot, deep_link=deep_link,
