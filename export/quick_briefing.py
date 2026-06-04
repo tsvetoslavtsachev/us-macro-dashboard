@@ -210,7 +210,7 @@ def _render_data_quality_section() -> str:
     <div class="lens-bars">
       <h3>Бележки за данните</h3>
       <div style="color:#8b949e;font-size:12px;line-height:1.6">
-        Композитът е mean breadth_positive × 100 на наличните lens-ове. Z-score за аномалиите е спрямо 5-годишен прозорец (|z|&gt;2 = екстремно четене спрямо peer групата). Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
+        Композитът и lens score-овете са средно на единния health примитив: робастен z (median/MAD) спрямо собствената 10-годишна плъзгаща норма + полярност, мапнат към 0–100 (50 = близката норма). Колоната „Здраве" на всеки ред ползва същия примитив върху трансформираната серия (темп за номиналните). Z-score за аномалиите е спрямо 5-годишен прозорец (|z|&gt;2 = екстремно четене спрямо peer групата). Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
       </div>
     </div>"""
 
@@ -224,9 +224,28 @@ def _fmt_val(v, decimals: int = 2) -> str:
         return str(v)
 
 
+def _fmt_reading(v, is_pct: bool = False) -> str:
+    """Стойност на per-series ред: трансформираните серии → '+3.2%' (темпът,
+    който се скорира); level серии → суровото ниво."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return "—"
+    if is_pct:
+        try:
+            return f"{float(v):+.1f}%"
+        except Exception:
+            return str(v)
+    return _fmt_val(v)
+
+
 def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
-    """Top серии в лещата по |z|, със стойност/percentile/дата (China-style readings)."""
+    """Top серии в лещата по |health_z|, със health 0–100 + трансф. стойност/дата.
+
+    Health = единният примитив (робастен z спрямо 10-г. прозорец + полярност);
+    50 = близката норма. Стойността е ТРАНСФОРМИРАНА (YoY % за номиналните серии),
+    за да съвпада с това, което се скорира — виж LENS_SCORING_METHODOLOGY.md.
+    """
     from catalog.series import series_by_lens
+    from catalog.polarity import polarity_for
     from core.scorer import score_series
 
     rows = []
@@ -237,19 +256,21 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
             continue
         try:
             sd = score_series(
-                s, history_start=meta.get("historical_start", "2000-01-01"),
-                invert=bool(meta.get("invert", False)), name=meta.get("name_bg", key),
+                s, name=meta.get("name_bg", key),
+                transform=meta.get("transform", "level"),
+                polarity=polarity_for(key, lens),
             )
         except Exception:
             continue
-        if sd.get("current_value") is None:
+        if sd.get("score") is None or sd.get("display_value") is None:
             continue
         rows.append({
             "label": meta.get("name_bg", key),
-            "value": sd.get("current_value"),
-            "percentile": sd.get("percentile"),
+            "value": sd.get("display_value"),
+            "is_pct": sd.get("display_is_pct", False),
+            "health": sd.get("score"),
             "date": sd.get("last_date"),
-            "absz": abs(sd.get("z_score") or 0.0),
+            "absz": abs(sd.get("health_z") or 0.0),
         })
     rows.sort(key=lambda r: r["absz"], reverse=True)
     return rows[:top_n]
@@ -275,15 +296,16 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
 
         rows_html = ""
         for rd in (_lens_readings(lens, snapshot) if snapshot is not None else []):
-            pct = rd["percentile"]
-            pct_v = 50.0 if pct is None or pd.isna(pct) else max(0.0, min(100.0, pct))
+            health = rd["health"]
+            hv = 50.0 if health is None or pd.isna(health) else max(0.0, min(100.0, health))
+            row_color = _score_color(hv)   # цвят по собствения health band на реда
             date_str = str(rd["date"])[:10] if rd["date"] else ""
             lbl = _html.escape(str(rd["label"]))
             rows_html += f"""
             <tr style="border-top:1px solid #21262d">
               <td style="padding:4px;color:#e6edf3;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
-              <td style="padding:4px;text-align:right;color:#c9d1d9;font-weight:600">{_fmt_val(rd['value'])}</td>
-              <td style="padding:4px;text-align:center;white-space:nowrap"><span style="display:inline-block;width:32px;height:5px;background:#21262d;border-radius:3px;vertical-align:middle;overflow:hidden"><span style="display:block;width:{pct_v:.0f}%;height:100%;background:{sc_color}"></span></span> <span style="color:#8b949e;font-size:10px">{pct_v:.0f}</span></td>
+              <td style="padding:4px;text-align:right;color:#c9d1d9;font-weight:600">{_fmt_reading(rd['value'], rd.get('is_pct'))}</td>
+              <td style="padding:4px;text-align:center;white-space:nowrap"><span style="display:inline-block;width:32px;height:5px;background:#21262d;border-radius:3px;vertical-align:middle;overflow:hidden"><span style="display:block;width:{hv:.0f}%;height:100%;background:{row_color}"></span></span> <span style="color:#8b949e;font-size:10px">{hv:.0f}</span></td>
               <td style="padding:4px;text-align:right;color:#8b949e;font-size:10px;white-space:nowrap">{date_str}</td>
             </tr>"""
         table_html = ""
@@ -293,7 +315,7 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
               <thead><tr style="color:#8b949e">
                 <th style="text-align:left;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Показател</th>
                 <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Стойност</th>
-                <th style="text-align:center;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Pctl</th>
+                <th style="text-align:center;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Здраве</th>
                 <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Дата</th>
               </tr></thead>
               <tbody>{rows_html}</tbody>
@@ -461,7 +483,7 @@ body {{
       <div class="composite-info">
         <h2>Композитен Macro Score</h2>
         <span class="regime-badge" style="background:{regime_bg_c};color:{regime_fg_c};border:1px solid {regime_bd_c}">{regime_label_bg}</span>
-        <div class="description">Mean breadth_positive × 100 across {len(exec_snapshot.lens_rows)} lens-а. Score &lt; {SCORE_RED:.0f} = свиване; &gt; {SCORE_GREEN:.0f} = експанзия; между двата = смесен/преходен.</div>
+        <div class="description">Средно на lens health score-овете (робастен z спрямо 10-г. норма; 50 = норма) от {len(exec_snapshot.lens_rows)} lens-а. Score &lt; {SCORE_RED:.0f} = свиване; &gt; {SCORE_GREEN:.0f} = експанзия; между двата = смесен/преходен.</div>
         {deep_btn}
       </div>
     </div>

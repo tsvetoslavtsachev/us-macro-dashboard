@@ -81,6 +81,24 @@ POLARITY: dict[str, Any] = {
     "M2": +1, "FED_BS": +1, "TOTAL_RESERVES": +1,
     # LIQUIDITY / banking_credit
     "CC_DELINQUENCY": -1,
+
+    # ── HOUSING ───────────────────────────────────────────────────────────────
+    # Следва типовете от §3; знаците подлежат на review от Цветослав. Преди това
+    # непосочените housing серии default-ваха +1 → ипотечни лихви/месеци предлагане
+    # се четяха като „по-високо=по-здраво" (грешно). Тук са изрично заковани.
+    # HOUSING / housing_prices (ръст на цените = по-силен пазар)
+    "CSUSHPISA": +1, "SPCS20RSA": +1, "USSTHPI": +1, "HPIPONM226S": +1,
+    "ZHVI_US_SFR_CONDO": +1,
+    # HOUSING / housing_sales (повече сделки/договори = по-здраво)
+    "HSN1F": +1, "EXHOSLUSM495S": +1, "NAR_PHSI": +1,
+    # HOSINVUSM495N (inventory) — двусмислено (предлагане vs слабо търсене) → default +1
+    # HOUSING / housing_financing
+    "MORTGAGE30US": -1, "MORTGAGE15US": -1,   # по-висока ипотечна лихва = по-зле
+    "MBA_PURCHASE_IDX": +1, "MBA_REFINANCE_IDX": +1,
+    # HOUSING / housing_affordability
+    "MSACSR": -1,        # повече месеци предлагане = свръхпредлагане/охлаждане
+    "FIXHAI": +1,        # по-достъпно жилище = по-здраво
+    "NAHB_HMI": +1,      # builder optimism > 50 = positive
 }
 
 # ── Per-(lens, key) overrides — multi-lens серии с различен смисъл ────────────

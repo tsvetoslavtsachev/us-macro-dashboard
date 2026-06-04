@@ -31,8 +31,9 @@ import pandas as pd
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
-from config import FRED_API_KEY, HISTORY_START
+from config import FRED_API_KEY
 from catalog.series import SERIES_CATALOG
+from catalog.polarity import polarity_for
 from sources.fred_adapter import FredAdapter
 from core.scorer import score_series
 from core.display import change_kind, compute_change, fmt_change, fmt_value
@@ -344,9 +345,15 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
         dates = [str(d.date()) for d in display_filtered.index]
         values = [_clean(v) for v in display_filtered.values]
 
-        # Score: percentile на ТРАНСФОРМИРАНАТА серия спрямо нейната пълна
-        # история (HISTORY_START). За level серии — както досега.
-        score_data = score_series(display_series, history_start=HISTORY_START, name=series_id)
+        # Score: единният health примитив — робастен z спрямо 10-г. плъзгаща
+        # норма върху каталожно-трансформираната серия + полярност. score=50 е
+        # близката норма; percentile е trailing-10г ранг (не full-history → вече
+        # НЕ клони към 100 за номинално растящите серии).
+        score_data = score_series(
+            raw_series, name=series_id,
+            transform=transform,
+            polarity=polarity_for(series_id, primary_lens),
+        )
 
         series_out[series_id] = {
             "meta": {
@@ -367,6 +374,7 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
                 "yoy_change": _clean(yoy_val),
                 "percentile": _clean(score_data.get("percentile")),
                 "z_score": _clean(score_data.get("z_score")),
+                "health_z": _clean(score_data.get("health_z")),
                 "score": _clean(score_data.get("score")),
                 "regime": score_data.get("regime_label"),
             },
