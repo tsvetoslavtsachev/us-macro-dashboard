@@ -74,6 +74,8 @@ POLARITY: dict[str, Any] = {
 
     # LIQUIDITY / policy_rates + term_structure
     "FED_FUNDS": -1, "SOFR": -1, "UST_2Y": -1, "UST_10Y": -1,
+    # SOFR OIS (имплицирана Fed пътека) — по-висока ставка = стягане = по-зле, като FED_FUNDS/SOFR/UST
+    "US_SOFR_OIS_3M": -1, "US_SOFR_OIS_6M": -1, "US_SOFR_OIS_1Y": -1, "US_SOFR_OIS_2Y": -1,
     "YC_10Y2Y": +1, "YC_10Y3M": +1,   # по-стръмна крива = по-здраво
     # LIQUIDITY / credit_spreads + financial_conditions
     "HY_OAS": -1, "IG_OAS": -1, "NFCI": -1, "STLFSI": -1,
@@ -83,7 +85,7 @@ POLARITY: dict[str, Any] = {
     "CC_DELINQUENCY": -1,
 
     # ── HOUSING ───────────────────────────────────────────────────────────────
-    # Следва типовете от §3; знаците подлежат на review от Цветослав. Преди това
+    # Следва типовете от §3. Знаците ПОТВЪРДЕНИ от Цветослав 2026-06-05. Преди това
     # непосочените housing серии default-ваха +1 → ипотечни лихви/месеци предлагане
     # се четяха като „по-високо=по-здраво" (грешно). Тук са изрично заковани.
     # HOUSING / housing_prices (ръст на цените = по-силен пазар)
@@ -91,7 +93,10 @@ POLARITY: dict[str, Any] = {
     "ZHVI_US_SFR_CONDO": +1,
     # HOUSING / housing_sales (повече сделки/договори = по-здраво)
     "HSN1F": +1, "EXHOSLUSM495S": +1, "NAR_PHSI": +1,
-    # HOSINVUSM495N (inventory) — двусмислено (предлагане vs слабо търсене) → default +1
+    # Inventory (yoy темп): U около собствената норма — и свръхбързо натрупване
+    # (охлаждане/свръхпредлагане), и свръхбърз спад (недостиг) = по-нездраво.
+    # Решение Цветослав 2026-06-05 (преди това default +1).
+    "HOSINVUSM495N": ("U", "self"),
     # HOUSING / housing_financing
     "MORTGAGE30US": -1, "MORTGAGE15US": -1,   # по-висока ипотечна лихва = по-зле
     "MBA_PURCHASE_IDX": +1, "MBA_REFINANCE_IDX": +1,
