@@ -210,7 +210,7 @@ def _render_data_quality_section() -> str:
     <div class="lens-bars">
       <h3>Бележки за данните</h3>
       <div style="color:#8b949e;font-size:12px;line-height:1.6">
-        Композитът и lens score-овете са средно на единния health примитив: робастен z (median/MAD) спрямо собствената 10-годишна плъзгаща норма + полярност, мапнат към 0–100 (50 = близката норма). Колоната „Здраве" на всеки ред ползва същия примитив върху трансформираната серия (темп за номиналните). Z-score за аномалиите е спрямо 5-годишен прозорец (|z|&gt;2 = екстремно четене спрямо peer групата). Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
+        Композитът и lens score-овете са средно на единния health примитив: робастен z (median/MAD) спрямо собствената 10-годишна плъзгаща норма + полярност, мапнат към 0–100 (50 = близката норма). Колоната „Здраве" ползва същия примитив върху трансформираната серия (темп за номиналните). „Тренд" е траекторията на здравето (нагоре = по-здраво за всяка серия), а стрелката ▲▬▼ показва посоката за последните ~3 месеца. Аномалиите са робастен z на темпа спрямо 10-г. норма (|z|&gt;2 = екстремно четене), нов екстремум — спрямо 5-г. Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
       </div>
     </div>"""
 
@@ -237,6 +237,37 @@ def _fmt_reading(v, is_pct: bool = False) -> str:
     return _fmt_val(v)
 
 
+# ── „Посока" визуал — спарклайн + цветна стрелка (Аха момент, не таблица) ──────
+_DIR_ARROW = {"up": "▲", "down": "▼", "flat": "▬"}
+_DIR_COLOR = {"up": "#3fb950", "down": "#f85149", "flat": "#8b949e"}
+
+
+def _sparkline_svg(values, color: str = "#8b949e", w: int = 56, h: int = 18) -> str:
+    """Inline SVG спарклайн на скорираната траектория. Цвят = посока на здравето.
+    Пунктирана нулева линия ако серията пресича 0 (за % темпове)."""
+    vals = [float(v) for v in (values or []) if v is not None and not pd.isna(v)]
+    if len(vals) < 2:
+        return '<span style="color:#30363d;font-size:10px">—</span>'
+    lo, hi = min(vals), max(vals)
+    rng = (hi - lo) or 1.0
+    pad, n = 2.0, len(vals)
+    pts = []
+    for i, v in enumerate(vals):
+        x = pad + (w - 2 * pad) * i / (n - 1)
+        y = pad + (h - 2 * pad) * (1 - (v - lo) / rng)
+        pts.append(f"{x:.1f},{y:.1f}")
+    lx, ly = pts[-1].split(",")
+    base = ""
+    if lo < 0 < hi:
+        zy = pad + (h - 2 * pad) * (1 - (0 - lo) / rng)
+        base = (f'<line x1="{pad}" y1="{zy:.1f}" x2="{w - pad}" y2="{zy:.1f}" '
+                f'stroke="#484f58" stroke-width="0.5" stroke-dasharray="2 2"/>')
+    return (f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}" style="vertical-align:middle">'
+            f'{base}<polyline points="{" ".join(pts)}" fill="none" stroke="{color}" '
+            f'stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>'
+            f'<circle cx="{lx}" cy="{ly}" r="1.7" fill="{color}"/></svg>')
+
+
 def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
     """Top серии в лещата по |health_z|, със health 0–100 + трансф. стойност/дата.
 
@@ -247,6 +278,7 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
     from catalog.series import series_by_lens
     from catalog.polarity import polarity_for
     from core.scorer import score_series
+    from core.primitives import apply_transform
 
     rows = []
     for meta in series_by_lens(lens):
@@ -254,21 +286,35 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
         s = snapshot.get(key)
         if s is None:
             continue
+        transform = meta.get("transform", "level")
+        pol = polarity_for(key, lens)
         try:
-            sd = score_series(
-                s, name=meta.get("name_bg", key),
-                transform=meta.get("transform", "level"),
-                polarity=polarity_for(key, lens),
-            )
+            sd = score_series(s, name=meta.get("name_bg", key), transform=transform, polarity=pol)
         except Exception:
             continue
         if sd.get("score") is None or sd.get("display_value") is None:
             continue
+        # Спарклайн = траектория на ЗДРАВЕТО (полярностно ориентирана) → нагоре
+        # ВИНАГИ = по-здраво, за всички серии. Така цвят+форма+стрелка не си
+        # противоречат (месеци предлагане ↑ = надолу-влошава, не зелено-нагоре).
+        try:
+            t = apply_transform(s, transform).dropna().tail(24)
+            if isinstance(pol, tuple) and pol and pol[0] == "U":
+                center = float(pol[2]) if pol[1] == "target" else float(t.median())
+                spark = [-abs(float(v) - center) for v in t.values]   # близо до целта = по-високо
+            elif pol == -1:
+                spark = [-float(v) for v in t.values]                  # обърнато (нагоре=здраво)
+            else:
+                spark = [float(v) for v in t.values]
+        except Exception:
+            spark = []
         rows.append({
             "label": meta.get("name_bg", key),
             "value": sd.get("display_value"),
             "is_pct": sd.get("display_is_pct", False),
             "health": sd.get("score"),
+            "direction": sd.get("direction", "flat"),
+            "spark": spark,
             "date": sd.get("last_date"),
             "absz": abs(sd.get("health_z") or 0.0),
         })
@@ -299,14 +345,17 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
             health = rd["health"]
             hv = 50.0 if health is None or pd.isna(health) else max(0.0, min(100.0, health))
             row_color = _score_color(hv)   # цвят по собствения health band на реда
-            date_str = str(rd["date"])[:10] if rd["date"] else ""
+            direction = rd.get("direction", "flat")
+            dir_color = _DIR_COLOR.get(direction, "#8b949e")
+            spark_svg = _sparkline_svg(rd.get("spark"), color=dir_color)
+            arrow = _DIR_ARROW.get(direction, "▬")
             lbl = _html.escape(str(rd["label"]))
             rows_html += f"""
             <tr style="border-top:1px solid #21262d">
-              <td style="padding:4px;color:#e6edf3;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
-              <td style="padding:4px;text-align:right;color:#c9d1d9;font-weight:600">{_fmt_reading(rd['value'], rd.get('is_pct'))}</td>
-              <td style="padding:4px;text-align:center;white-space:nowrap"><span style="display:inline-block;width:32px;height:5px;background:#21262d;border-radius:3px;vertical-align:middle;overflow:hidden"><span style="display:block;width:{hv:.0f}%;height:100%;background:{row_color}"></span></span> <span style="color:#8b949e;font-size:10px">{hv:.0f}</span></td>
-              <td style="padding:4px;text-align:right;color:#8b949e;font-size:10px;white-space:nowrap">{date_str}</td>
+              <td style="padding:5px 4px;color:#e6edf3;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
+              <td style="padding:5px 4px;text-align:center;line-height:0">{spark_svg}</td>
+              <td style="padding:5px 4px;text-align:right;color:#c9d1d9;font-weight:600;white-space:nowrap">{_fmt_reading(rd['value'], rd.get('is_pct'))}</td>
+              <td style="padding:5px 4px;text-align:right;white-space:nowrap"><b style="color:{row_color}">{hv:.0f}</b> <span style="color:{dir_color};font-size:11px">{arrow}</span></td>
             </tr>"""
         table_html = ""
         if rows_html:
@@ -314,9 +363,9 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
             <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">
               <thead><tr style="color:#8b949e">
                 <th style="text-align:left;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Показател</th>
+                <th style="text-align:center;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Тренд</th>
                 <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Стойност</th>
-                <th style="text-align:center;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Здраве</th>
-                <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Дата</th>
+                <th style="text-align:right;padding:3px 4px;font-weight:600;font-size:10px;text-transform:uppercase">Здраве</th>
               </tr></thead>
               <tbody>{rows_html}</tbody>
             </table>"""

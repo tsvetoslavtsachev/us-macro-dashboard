@@ -37,7 +37,14 @@ import numpy as np
 import pandas as pd
 
 from catalog.series import SERIES_CATALOG, ALLOWED_LENSES
-from core.primitives import z_score, new_extreme
+from core.primitives import apply_transform, robust_stats_latest, new_extreme
+
+# Робастен z спрямо плъзгащ прозорец върху ТРАНСФОРМИРАНАТА серия — консистентно
+# с health примитива (LENS_SCORING_METHODOLOGY.md). Гаси trivial "NEW-MAX на
+# сурово ниво" за номинално растящите серии (HPI, M2, CPI индекс).
+_ANOMALY_WINDOW_YEARS = 10
+_ANOMALY_MIN_OBS = 24
+_Z_DISPLAY_CAP = 6.0   # клампва само near-zero-MAD експлозии (ZIRP лихви); ±6σ е „извън скалата"
 
 
 # ============================================================
@@ -131,22 +138,34 @@ def compute_anomalies(
         if series is None or series.dropna().empty:
             continue
 
-        z_series = z_score(series)
-        z_clean = z_series.dropna()
-        if z_clean.empty:
+        # Трансформираме (темп за номиналните), после робастен z спрямо плъзгащ
+        # прозорец — „екстремно четене спрямо собствената близка норма", не спрямо
+        # 1987. Не е полярностно — anomaly = необичайно ВИСОКО/НИСКО четене, не здраве.
+        transform = meta.get("transform", "level")
+        t = apply_transform(series, transform).dropna()
+        if t.empty:
             continue
-        z_last = float(z_clean.iloc[-1])
+        stats = robust_stats_latest(t, window_years=_ANOMALY_WINDOW_YEARS, min_obs=_ANOMALY_MIN_OBS)
+        if stats is None:
+            continue
+        val, med, scale = stats
+        if scale == 0 or np.isnan(scale):
+            continue
+        z_last = (val - med) / scale
+        # Display clamp срещу near-zero-MAD експлозия (серии пинати в тесен диапазон,
+        # после скок — ZIRP/NIRP лихви). ±6σ е вече „извън скалата"; клампът НЕ
+        # потиска нормалните сигнали (housing z≈-2.8 минава непокътнат).
+        z_last = max(-_Z_DISPLAY_CAP, min(_Z_DISPLAY_CAP, z_last))
         if np.isnan(z_last) or abs(z_last) <= z_threshold:
             continue
 
-        clean = series.dropna()
-        last_value = float(clean.iloc[-1])
+        last_value = float(val)   # трансформираната стойност (темп), към която реферира z
         last_date = (
-            clean.index[-1].strftime("%Y-%m-%d")
-            if isinstance(clean.index[-1], pd.Timestamp) else None
+            t.index[-1].strftime("%Y-%m-%d")
+            if isinstance(t.index[-1], pd.Timestamp) else None
         )
 
-        ne = new_extreme(series, lookback_years=lookback_years)
+        ne = new_extreme(t, lookback_years=lookback_years)   # нов екстремум на ТЕМПА, не на нивото
         is_new_extreme = ne is not None
         new_extreme_dir = ne["direction"] if ne else None
 

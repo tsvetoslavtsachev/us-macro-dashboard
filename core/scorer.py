@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 from typing import Any, Optional
 
-from core.primitives import apply_transform, robust_stats_latest
+from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods
 
 # ── константи (синхронни с analysis/health.py + catalog/polarity.py) ──────────
 TANH_SLOPE = 2.0       # score = 50·(1+tanh(z_h/SLOPE)); ±2σ ≈ 88/12
@@ -34,6 +34,11 @@ U_BAND = 1.0           # U-форма: толерантна лента (в σ) �
 WINDOW_YEARS = 10      # близката норма = последните 10 години
 MIN_OBS = 36           # ≥3 г. в прозореца, иначе fallback към пълна история
 PCT_TRANSFORMS = {"yoy_pct", "mom_pct", "qoq_pct"}  # display като % промяна
+# „Посока" сигнал: промяна на health-z за ~3 месеца (annotation, НЕ влиза в score).
+# dead-band е ЕДНА глобална константа за всички серии/икономики (универсално,
+# self-scaling по собствения robust scale) — не per-series tuning. Калибрирано
+# така, че реален rollover (housing ≈0.2σ) да регистрира, а шум (≤0.05σ) → ▬.
+DIR_DEADBAND = 0.15    # |Δhealth-z| (в σ) за ▲/▼; под него → ▬ (плоско)
 
 
 def percentile_rank(current: float, history: pd.Series) -> float:
@@ -81,6 +86,34 @@ def _health_z(val: float, med: float, scale: float, polarity: Any) -> float:
     z_raw = (val - med) / scale
     sign = float(polarity) if polarity in (1, -1, +1) else 1.0
     return float(sign * z_raw)
+
+
+def _health_direction(
+    transformed: pd.Series, scored_val: float, med: float, scale: float, polarity: Any,
+) -> str:
+    """Посока на ЗДРАВЕТО за ~3 месеца: 'up' (подобрява) / 'down' / 'flat'.
+
+    Простичко: знак на 3-мес. движение на скорираната серия, обърнат по полярност
+    (U → към/от целта). Нормира се по същия robust scale, dead-band = DIR_DEADBAND.
+    Чист annotation — НЕ влиза в score-а.
+    """
+    if scale == 0 or np.isnan(scale):
+        return "flat"
+    n3 = max(1, round(_infer_yoy_periods(transformed) / 4))  # ~3м: месечни=3, седм.=13, трим.=1
+    if len(transformed) <= n3:
+        return "flat"
+    prev = float(transformed.iloc[-1 - n3])
+    if isinstance(polarity, tuple) and polarity and polarity[0] == "U":
+        center = float(polarity[2]) if polarity[1] == "target" else med
+        d_hz = (abs(prev - center) - abs(scored_val - center)) / scale  # + = към целта
+    else:
+        sgn = float(polarity) if polarity in (1, -1, +1) else 1.0
+        d_hz = sgn * (scored_val - prev) / scale
+    if d_hz > DIR_DEADBAND:
+        return "up"
+    if d_hz < -DIR_DEADBAND:
+        return "down"
+    return "flat"
 
 
 def _trailing_window(s: pd.Series, window_years: int) -> pd.Series:
@@ -158,12 +191,13 @@ def score_series(
             "display_value": round(scored_val, 4), "display_is_pct": is_pct,
             "last_date": last_date, "yoy_change": _calc_yoy(series),
             "transform": transform, "polarity": _polarity_repr(polarity),
-            "invert": invert, "history_n": len(transformed),
+            "direction": "flat", "invert": invert, "history_n": len(transformed),
         }
 
     val, med, scale = stats
     hz = _health_z(val, med, scale, polarity)
     score = round(50.0 * (1.0 + math.tanh(hz / TANH_SLOPE)), 1)
+    direction = _health_direction(transformed, scored_val, med, scale, polarity)
 
     # Trailing percentile (на трансф. стойност в прозореца) — второстепенна прозрачност
     win = _trailing_window(transformed, used_window)
@@ -182,6 +216,7 @@ def score_series(
         "yoy_change": _calc_yoy(series),
         "transform": transform,
         "polarity": _polarity_repr(polarity),
+        "direction": direction,
         "invert": invert,
         "history_n": len(win),
     }
@@ -284,6 +319,7 @@ def _empty_score(name: str) -> dict:
         "yoy_change": None,
         "transform": "level",
         "polarity": "+1",
+        "direction": "flat",
         "invert": False,
         "history_n": 0,
     }
