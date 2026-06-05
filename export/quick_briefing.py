@@ -240,6 +240,9 @@ def _fmt_reading(v, is_pct: bool = False) -> str:
 # ── „Посока" визуал — спарклайн + цветна стрелка (Аха момент, не таблица) ──────
 _DIR_ARROW = {"up": "▲", "down": "▼", "flat": "▬"}
 _DIR_COLOR = {"up": "#3fb950", "down": "#f85149", "flat": "#8b949e"}
+# Severity по |σ| отклонение (item F): магнитуд до score-а → „десет" вече не подвежда.
+_SEVERITY_COLOR = {"норма": "#8b949e", "забележимо": "#58a6ff",
+                   "разпънато": "#d29922", "екстремно": "#f85149"}
 
 
 def _sparkline_svg(values, color: str = "#8b949e", w: int = 56, h: int = 18) -> str:
@@ -317,6 +320,8 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
             "spark": spark,
             "date": sd.get("last_date"),
             "absz": abs(sd.get("health_z") or 0.0),
+            "dev_sigma": sd.get("dev_sigma"),
+            "severity": sd.get("severity"),
         })
     rows.sort(key=lambda r: r["absz"], reverse=True)
     return rows[:top_n]
@@ -349,13 +354,26 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
             dir_color = _DIR_COLOR.get(direction, "#8b949e")
             spark_svg = _sparkline_svg(rd.get("spark"), color=dir_color)
             arrow = _DIR_ARROW.get(direction, "▬")
+            # σ-магнитуд до score-а (item F): легибилен размер на отклонението →
+            # „10" с „2.3σ разпънато" се чете различно от „10" с „8σ екстремно".
+            dev = rd.get("dev_sigma")
+            sev = rd.get("severity")
+            sev_chip = ""
+            if dev is not None and sev:
+                sev_color = _SEVERITY_COLOR.get(sev, "#8b949e")
+                # ОТРЯЗВАМЕ (не закръгляме) σ за дисплей → числото никога не
+                # прескача праг и не противоречи на severity тира (1.96σ→„1.9σ").
+                mag = int(abs(dev) * 10) / 10
+                sev_chip = (f' <span title="отклонение {mag:.1f}σ от нормата · {sev}" '
+                            f'style="color:{sev_color};font-size:10px;font-weight:600">'
+                            f'{mag:.1f}σ</span>')
             lbl = _html.escape(str(rd["label"]))
             rows_html += f"""
             <tr style="border-top:1px solid #21262d">
               <td style="padding:5px 4px;color:#e6edf3;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
               <td style="padding:5px 4px;text-align:center;line-height:0">{spark_svg}</td>
               <td style="padding:5px 4px;text-align:right;color:#c9d1d9;font-weight:600;white-space:nowrap">{_fmt_reading(rd['value'], rd.get('is_pct'))}</td>
-              <td style="padding:5px 4px;text-align:right;white-space:nowrap"><b style="color:{row_color}">{hv:.0f}</b> <span style="color:{dir_color};font-size:11px">{arrow}</span></td>
+              <td style="padding:5px 4px;text-align:right;white-space:nowrap"><b style="color:{row_color}">{hv:.0f}</b> <span style="color:{dir_color};font-size:11px">{arrow}</span>{sev_chip}</td>
             </tr>"""
         table_html = ""
         if rows_html:

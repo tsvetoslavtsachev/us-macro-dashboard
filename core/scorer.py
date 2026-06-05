@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 from typing import Any, Optional
 
-from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods
+from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods, severity_tier
 
 # ── константи (синхронни с analysis/health.py + catalog/polarity.py) ──────────
 TANH_SLOPE = 2.0       # score = 50·(1+tanh(z_h/SLOPE)); ±2σ ≈ 88/12
@@ -86,6 +86,21 @@ def _health_z(val: float, med: float, scale: float, polarity: Any) -> float:
     z_raw = (val - med) / scale
     sign = float(polarity) if polarity in (1, -1, +1) else 1.0
     return float(sign * z_raw)
+
+
+def _dev_sigma(val: float, med: float, scale: float, polarity: Any) -> float:
+    """Магнитуд: подписано отклонение от нормата/целта в σ (полярностно-агностичен).
+
+    linear / U-self → спрямо median₁₀; U-target → спрямо целта. Знакът е суров
+    (над/под референцията), НЕ здраве-ориентиран — score-ът + Посока носят посоката,
+    σ носи РАЗМЕРА. |dev_sigma| захранва severity_tier. Виж item F.
+    """
+    if scale == 0 or np.isnan(scale):
+        return 0.0
+    if isinstance(polarity, tuple) and polarity and polarity[0] == "U":
+        center = float(polarity[2]) if polarity[1] == "target" else med
+        return (val - center) / scale
+    return (val - med) / scale
 
 
 def _health_direction(
@@ -191,13 +206,16 @@ def score_series(
             "display_value": round(scored_val, 4), "display_is_pct": is_pct,
             "last_date": last_date, "yoy_change": _calc_yoy(series),
             "transform": transform, "polarity": _polarity_repr(polarity),
-            "direction": "flat", "invert": invert, "history_n": len(transformed),
+            "direction": "flat", "dev_sigma": 0.0, "severity": "норма",
+            "invert": invert, "history_n": len(transformed),
         }
 
     val, med, scale = stats
     hz = _health_z(val, med, scale, polarity)
     score = round(50.0 * (1.0 + math.tanh(hz / TANH_SLOPE)), 1)
     direction = _health_direction(transformed, scored_val, med, scale, polarity)
+    dev_sigma = _dev_sigma(val, med, scale, polarity)  # магнитуд (item F)
+    severity = severity_tier(dev_sigma)
 
     # Trailing percentile (на трансф. стойност в прозореца) — второстепенна прозрачност
     win = _trailing_window(transformed, used_window)
@@ -217,6 +235,8 @@ def score_series(
         "transform": transform,
         "polarity": _polarity_repr(polarity),
         "direction": direction,
+        "dev_sigma": round(dev_sigma, 2),
+        "severity": severity,
         "invert": invert,
         "history_n": len(win),
     }
@@ -320,6 +340,8 @@ def _empty_score(name: str) -> dict:
         "transform": "level",
         "polarity": "+1",
         "direction": "flat",
+        "dev_sigma": None,
+        "severity": None,
         "invert": False,
         "history_n": 0,
     }

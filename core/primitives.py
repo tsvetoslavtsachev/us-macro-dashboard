@@ -187,6 +187,35 @@ def robust_stats_latest(
 
 
 # ============================================================
+# MAGNITUDE / SEVERITY (легибилност на отклонението — item F)
+# ============================================================
+# „Десет подвежда по магнитуд": 0–100 score-ът насища (tanh) и трупа дъното —
+# −2σ → score ≈ 10, но и −8σ → score ≈ 0, така че „мек спад" не се различава от
+# „крах". σ-магнитудът на отклонението носи информацията, която tanh трие.
+# ЕДНА глобална скала за всички серии и трите икономики (σ е вече self-scaling по
+# robust scale) — без per-series tuning, в духа на DIR_DEADBAND. НЕ влиза в score.
+SEVERITY_EDGES = (1.0, 2.0, 3.0)                       # |σ| прагове
+SEVERITY_LABELS = ("норма", "забележимо", "разпънато", "екстремно")
+
+
+def severity_tier(dev_sigma: Optional[float]) -> Optional[str]:
+    """|σ| отклонение от нормата/целта → глобален severity лейбъл (annotation).
+
+    Полярностно-агностичен магнитуд: |dev_sigma| < 1 → норма; 1–2 → забележимо;
+    2–3 → разпънато; ≥3 → екстремно. None → None (недостатъчно данни)."""
+    if dev_sigma is None or (isinstance(dev_sigma, float) and np.isnan(dev_sigma)):
+        return None
+    a = abs(float(dev_sigma))
+    if a < SEVERITY_EDGES[0]:
+        return SEVERITY_LABELS[0]
+    if a < SEVERITY_EDGES[1]:
+        return SEVERITY_LABELS[1]
+    if a < SEVERITY_EDGES[2]:
+        return SEVERITY_LABELS[2]
+    return SEVERITY_LABELS[3]
+
+
+# ============================================================
 # BREADTH PRIMITIVES (peer group level)
 # ============================================================
 
