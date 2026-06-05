@@ -1,7 +1,7 @@
 {
   "region": "US",
-  "as_of_date": "2026-06-04",
-  "generated_at": "2026-06-04T21:41:09.191760Z",
+  "as_of_date": "2026-06-05",
+  "generated_at": "2026-06-05T22:09:49.965365Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
@@ -16,26 +16,26 @@
   },
   "lenses": {
     "labor": {
-      "score": 35.3,
-      "health_z": -0.607,
+      "score": 35.6,
+      "health_z": -0.593,
       "direction": "contracting",
-      "breadth_pct": 25.9,
+      "breadth_pct": 29.6,
       "anomalies_count": 2,
       "new_extreme_count": 2,
       "intra_divergences": [
         {
           "lens": "labor",
           "group_a": "hours",
-          "group_b": "labor_share",
-          "breadth_a": 1.0,
-          "breadth_b": 0.0,
-          "diff": 1.0,
-          "interpretation": "hours е по-силна (100%) отколкото labor_share (0%) — разминаване +100%.",
-          "name_bg": "hours vs labor_share",
-          "pair_id": "labor__hours__vs__labor_share",
+          "group_b": "wage_dynamics",
+          "breadth_a": 0.0,
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "wage_dynamics е по-силна (100%) отколкото hours (0%) — разминаване +100%.",
+          "name_bg": "hours vs wage_dynamics",
+          "pair_id": "labor__hours__vs__wage_dynamics",
           "slot_a_label": "hours",
-          "slot_b_label": "labor_share",
-          "state": "a_up_b_down"
+          "slot_b_label": "wage_dynamics",
+          "state": "a_down_b_up"
         },
         {
           "lens": "labor",
@@ -54,29 +54,15 @@
         {
           "lens": "labor",
           "group_a": "hours",
-          "group_b": "unemployment",
-          "breadth_a": 1.0,
-          "breadth_b": 0.2,
-          "diff": 0.8,
-          "interpretation": "hours е по-силна (100%) отколкото unemployment (20%) — разминаване +80%.",
-          "name_bg": "hours vs unemployment",
-          "pair_id": "labor__hours__vs__unemployment",
+          "group_b": "sectoral_employment",
+          "breadth_a": 0.0,
+          "breadth_b": 0.714,
+          "diff": -0.714,
+          "interpretation": "sectoral_employment е по-силна (71%) отколкото hours (0%) — разминаване +71%.",
+          "name_bg": "hours vs sectoral_employment",
+          "pair_id": "labor__hours__vs__sectoral_employment",
           "slot_a_label": "hours",
-          "slot_b_label": "unemployment",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "labor",
-          "group_a": "unemployment",
-          "group_b": "wage_dynamics",
-          "breadth_a": 0.2,
-          "breadth_b": 1.0,
-          "diff": -0.8,
-          "interpretation": "wage_dynamics е по-силна (100%) отколкото unemployment (20%) — разминаване +80%.",
-          "name_bg": "unemployment vs wage_dynamics",
-          "pair_id": "labor__unemployment__vs__wage_dynamics",
-          "slot_a_label": "unemployment",
-          "slot_b_label": "wage_dynamics",
+          "slot_b_label": "sectoral_employment",
           "state": "a_down_b_up"
         },
         {
@@ -96,6 +82,20 @@
         {
           "lens": "labor",
           "group_a": "ai_exposure",
+          "group_b": "hours",
+          "breadth_a": 0.667,
+          "breadth_b": 0.0,
+          "diff": 0.667,
+          "interpretation": "ai_exposure е по-силна (67%) отколкото hours (0%) — разминаване +67%.",
+          "name_bg": "ai_exposure vs hours",
+          "pair_id": "labor__ai_exposure__vs__hours",
+          "slot_a_label": "ai_exposure",
+          "slot_b_label": "hours",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "labor",
+          "group_a": "ai_exposure",
           "group_b": "labor_share",
           "breadth_a": 0.667,
           "breadth_b": 0.0,
@@ -105,6 +105,20 @@
           "pair_id": "labor__ai_exposure__vs__labor_share",
           "slot_a_label": "ai_exposure",
           "slot_b_label": "labor_share",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "labor",
+          "group_a": "claims",
+          "group_b": "hours",
+          "breadth_a": 0.667,
+          "breadth_b": 0.0,
+          "diff": 0.667,
+          "interpretation": "claims е по-силна (67%) отколкото hours (0%) — разминаване +67%.",
+          "name_bg": "claims vs hours",
+          "pair_id": "labor__claims__vs__hours",
+          "slot_a_label": "claims",
+          "slot_b_label": "hours",
           "state": "a_up_b_down"
         },
         {
@@ -124,20 +138,6 @@
         {
           "lens": "labor",
           "group_a": "flow",
-          "group_b": "hours",
-          "breadth_a": 0.333,
-          "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "hours е по-силна (100%) отколкото flow (33%) — разминаване +67%.",
-          "name_bg": "flow vs hours",
-          "pair_id": "labor__flow__vs__hours",
-          "slot_a_label": "flow",
-          "slot_b_label": "hours",
-          "state": "a_down_b_up"
-        },
-        {
-          "lens": "labor",
-          "group_a": "flow",
           "group_b": "wage_dynamics",
           "breadth_a": 0.333,
           "breadth_b": 1.0,
@@ -151,51 +151,51 @@
         },
         {
           "lens": "labor",
-          "group_a": "sectoral_employment",
-          "group_b": "unemployment",
-          "breadth_a": 0.714,
-          "breadth_b": 0.2,
-          "diff": 0.514,
-          "interpretation": "sectoral_employment е по-силна (71%) отколкото unemployment (20%) — разминаване +51%.",
-          "name_bg": "sectoral_employment vs unemployment",
-          "pair_id": "labor__sectoral_employment__vs__unemployment",
-          "slot_a_label": "sectoral_employment",
-          "slot_b_label": "unemployment",
-          "state": "a_up_b_down"
+          "group_a": "unemployment",
+          "group_b": "wage_dynamics",
+          "breadth_a": 0.4,
+          "breadth_b": 1.0,
+          "diff": -0.6,
+          "interpretation": "wage_dynamics е по-силна (100%) отколкото unemployment (40%) — разминаване +60%.",
+          "name_bg": "unemployment vs wage_dynamics",
+          "pair_id": "labor__unemployment__vs__wage_dynamics",
+          "slot_a_label": "unemployment",
+          "slot_b_label": "wage_dynamics",
+          "state": "a_down_b_up"
         },
         {
           "lens": "labor",
-          "group_a": "ai_exposure",
+          "group_a": "hours",
           "group_b": "unemployment",
-          "breadth_a": 0.667,
-          "breadth_b": 0.2,
-          "diff": 0.467,
-          "interpretation": "ai_exposure е по-силна (67%) отколкото unemployment (20%) — разминаване +47%.",
-          "name_bg": "ai_exposure vs unemployment",
-          "pair_id": "labor__ai_exposure__vs__unemployment",
-          "slot_a_label": "ai_exposure",
+          "breadth_a": 0.0,
+          "breadth_b": 0.4,
+          "diff": -0.4,
+          "interpretation": "unemployment е по-силна (40%) отколкото hours (0%) — разминаване +40%.",
+          "name_bg": "hours vs unemployment",
+          "pair_id": "labor__hours__vs__unemployment",
+          "slot_a_label": "hours",
           "slot_b_label": "unemployment",
-          "state": "a_up_b_down"
+          "state": "a_down_b_up"
         },
         {
           "lens": "labor",
-          "group_a": "claims",
+          "group_a": "labor_share",
           "group_b": "unemployment",
-          "breadth_a": 0.667,
-          "breadth_b": 0.2,
-          "diff": 0.467,
-          "interpretation": "claims е по-силна (67%) отколкото unemployment (20%) — разминаване +47%.",
-          "name_bg": "claims vs unemployment",
-          "pair_id": "labor__claims__vs__unemployment",
-          "slot_a_label": "claims",
+          "breadth_a": 0.0,
+          "breadth_b": 0.4,
+          "diff": -0.4,
+          "interpretation": "unemployment е по-силна (40%) отколкото labor_share (0%) — разминаване +40%.",
+          "name_bg": "labor_share vs unemployment",
+          "pair_id": "labor__labor_share__vs__unemployment",
+          "slot_a_label": "labor_share",
           "slot_b_label": "unemployment",
-          "state": "a_up_b_down"
+          "state": "a_down_b_up"
         }
       ]
     },
     "growth": {
-      "score": 45.2,
-      "health_z": -0.192,
+      "score": 45.6,
+      "health_z": -0.178,
       "direction": "mixed",
       "breadth_pct": 44.4,
       "anomalies_count": 1,
@@ -260,8 +260,8 @@
       ]
     },
     "inflation": {
-      "score": 34.1,
-      "health_z": -0.659,
+      "score": 33.9,
+      "health_z": -0.669,
       "direction": "contracting",
       "breadth_pct": 22.2,
       "anomalies_count": 5,
@@ -410,8 +410,8 @@
       ]
     },
     "liquidity": {
-      "score": 51.6,
-      "health_z": 0.064,
+      "score": 51.7,
+      "health_z": 0.066,
       "direction": "mixed",
       "breadth_pct": 46.7,
       "anomalies_count": 0,
@@ -419,17 +419,31 @@
       "intra_divergences": [
         {
           "lens": "liquidity",
-          "group_a": "financial_conditions",
-          "group_b": "policy_rates",
-          "breadth_a": 1.0,
-          "breadth_b": 0.0,
-          "diff": 1.0,
-          "interpretation": "financial_conditions е по-силна (100%) отколкото policy_rates (0%) — разминаване +100%.",
-          "name_bg": "financial_conditions vs policy_rates",
-          "pair_id": "liquidity__financial_conditions__vs__policy_rates",
-          "slot_a_label": "financial_conditions",
-          "slot_b_label": "policy_rates",
-          "state": "a_up_b_down"
+          "group_a": "credit_spreads",
+          "group_b": "financial_conditions",
+          "breadth_a": 0.0,
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "financial_conditions е по-силна (100%) отколкото credit_spreads (0%) — разминаване +100%.",
+          "name_bg": "credit_spreads vs financial_conditions",
+          "pair_id": "liquidity__credit_spreads__vs__financial_conditions",
+          "slot_a_label": "credit_spreads",
+          "slot_b_label": "financial_conditions",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "liquidity",
+          "group_a": "credit_spreads",
+          "group_b": "money_supply",
+          "breadth_a": 0.0,
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "money_supply е по-силна (100%) отколкото credit_spreads (0%) — разминаване +100%.",
+          "name_bg": "credit_spreads vs money_supply",
+          "pair_id": "liquidity__credit_spreads__vs__money_supply",
+          "slot_a_label": "credit_spreads",
+          "slot_b_label": "money_supply",
+          "state": "a_down_b_up"
         },
         {
           "lens": "liquidity",
@@ -448,15 +462,29 @@
         {
           "lens": "liquidity",
           "group_a": "money_supply",
-          "group_b": "policy_rates",
-          "breadth_a": 0.667,
-          "breadth_b": 0.0,
-          "diff": 0.667,
-          "interpretation": "money_supply е по-силна (67%) отколкото policy_rates (0%) — разминаване +67%.",
-          "name_bg": "money_supply vs policy_rates",
-          "pair_id": "liquidity__money_supply__vs__policy_rates",
+          "group_b": "term_structure",
+          "breadth_a": 1.0,
+          "breadth_b": 0.25,
+          "diff": 0.75,
+          "interpretation": "money_supply е по-силна (100%) отколкото term_structure (25%) — разминаване +75%.",
+          "name_bg": "money_supply vs term_structure",
+          "pair_id": "liquidity__money_supply__vs__term_structure",
           "slot_a_label": "money_supply",
-          "slot_b_label": "policy_rates",
+          "slot_b_label": "term_structure",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "liquidity",
+          "group_a": "banking_credit",
+          "group_b": "credit_spreads",
+          "breadth_a": 0.5,
+          "breadth_b": 0.0,
+          "diff": 0.5,
+          "interpretation": "banking_credit е по-силна (50%) отколкото credit_spreads (0%) — разминаване +50%.",
+          "name_bg": "banking_credit vs credit_spreads",
+          "pair_id": "liquidity__banking_credit__vs__credit_spreads",
+          "slot_a_label": "banking_credit",
+          "slot_b_label": "credit_spreads",
           "state": "a_up_b_down"
         },
         {
@@ -476,57 +504,57 @@
         {
           "lens": "liquidity",
           "group_a": "banking_credit",
-          "group_b": "policy_rates",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "banking_credit е по-силна (50%) отколкото policy_rates (0%) — разминаване +50%.",
-          "name_bg": "banking_credit vs policy_rates",
-          "pair_id": "liquidity__banking_credit__vs__policy_rates",
-          "slot_a_label": "banking_credit",
-          "slot_b_label": "policy_rates",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "credit_spreads",
-          "group_b": "financial_conditions",
+          "group_b": "money_supply",
           "breadth_a": 0.5,
           "breadth_b": 1.0,
           "diff": -0.5,
-          "interpretation": "financial_conditions е по-силна (100%) отколкото credit_spreads (50%) — разминаване +50%.",
-          "name_bg": "credit_spreads vs financial_conditions",
-          "pair_id": "liquidity__credit_spreads__vs__financial_conditions",
-          "slot_a_label": "credit_spreads",
-          "slot_b_label": "financial_conditions",
+          "interpretation": "money_supply е по-силна (100%) отколкото banking_credit (50%) — разминаване +50%.",
+          "name_bg": "banking_credit vs money_supply",
+          "pair_id": "liquidity__banking_credit__vs__money_supply",
+          "slot_a_label": "banking_credit",
+          "slot_b_label": "money_supply",
           "state": "a_down_b_up"
         },
         {
           "lens": "liquidity",
           "group_a": "credit_spreads",
           "group_b": "policy_rates",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "credit_spreads е по-силна (50%) отколкото policy_rates (0%) — разминаване +50%.",
+          "breadth_a": 0.0,
+          "breadth_b": 0.5,
+          "diff": -0.5,
+          "interpretation": "policy_rates е по-силна (50%) отколкото credit_spreads (0%) — разминаване +50%.",
           "name_bg": "credit_spreads vs policy_rates",
           "pair_id": "liquidity__credit_spreads__vs__policy_rates",
           "slot_a_label": "credit_spreads",
+          "slot_b_label": "policy_rates",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "liquidity",
+          "group_a": "financial_conditions",
+          "group_b": "policy_rates",
+          "breadth_a": 1.0,
+          "breadth_b": 0.5,
+          "diff": 0.5,
+          "interpretation": "financial_conditions е по-силна (100%) отколкото policy_rates (50%) — разминаване +50%.",
+          "name_bg": "financial_conditions vs policy_rates",
+          "pair_id": "liquidity__financial_conditions__vs__policy_rates",
+          "slot_a_label": "financial_conditions",
           "slot_b_label": "policy_rates",
           "state": "a_up_b_down"
         },
         {
           "lens": "liquidity",
           "group_a": "money_supply",
-          "group_b": "term_structure",
-          "breadth_a": 0.667,
-          "breadth_b": 0.25,
-          "diff": 0.417,
-          "interpretation": "money_supply е по-силна (67%) отколкото term_structure (25%) — разминаване +42%.",
-          "name_bg": "money_supply vs term_structure",
-          "pair_id": "liquidity__money_supply__vs__term_structure",
+          "group_b": "policy_rates",
+          "breadth_a": 1.0,
+          "breadth_b": 0.5,
+          "diff": 0.5,
+          "interpretation": "money_supply е по-силна (100%) отколкото policy_rates (50%) — разминаване +50%.",
+          "name_bg": "money_supply vs policy_rates",
+          "pair_id": "liquidity__money_supply__vs__policy_rates",
           "slot_a_label": "money_supply",
-          "slot_b_label": "term_structure",
+          "slot_b_label": "policy_rates",
           "state": "a_up_b_down"
         }
       ]
@@ -679,7 +707,7 @@
       "interpretation": "Стагфлация confirmation — labor tight + inflation hot.",
       "slot_a_label": "Labor tightness",
       "slot_b_label": "Inflation pressure",
-      "breadth_a": 0.9,
+      "breadth_a": 0.8,
       "breadth_b": 1.0
     },
     {
@@ -712,8 +740,8 @@
       "interpretation": "Mixed transmission.",
       "slot_a_label": "Credit stress",
       "slot_b_label": "Policy tightening",
-      "breadth_a": 0.5,
-      "breadth_b": 0.0
+      "breadth_a": 0.0,
+      "breadth_b": 0.5
     },
     {
       "pair_id": "sentiment_vs_hard_data",
@@ -748,7 +776,7 @@
       ],
       "signal_strength": "medium",
       "percentile": null,
-      "z_score": 2.574,
+      "z_score": 2.575,
       "direction": "insufficient"
     },
     {
@@ -809,6 +837,18 @@
       "direction": "insufficient"
     },
     {
+      "series_id": "TRUCK_EMP",
+      "name_bg": "Заети: автомобилен транспорт (камиони)",
+      "lens": [
+        "labor",
+        "growth"
+      ],
+      "signal_strength": "medium",
+      "percentile": null,
+      "z_score": 0.775,
+      "direction": "up"
+    },
+    {
       "series_id": "USINFO",
       "name_bg": "Информационен сектор (заетост)",
       "lens": [
@@ -816,19 +856,8 @@
       ],
       "signal_strength": "medium",
       "percentile": null,
-      "z_score": 0.726,
+      "z_score": 0.742,
       "direction": "up"
-    },
-    {
-      "series_id": "YC_10Y3M",
-      "name_bg": "Yield curve: 10Y - 3M спред (Fed-preferred)",
-      "lens": [
-        "liquidity"
-      ],
-      "signal_strength": "medium",
-      "percentile": null,
-      "z_score": -0.662,
-      "direction": "down"
     }
   ]
 }
