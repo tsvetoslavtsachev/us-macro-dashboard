@@ -148,7 +148,10 @@ def apply_transform(series: pd.Series, transform: str) -> pd.Series:
     if transform == "mom_pct":
         return mom_pct(s)
     if transform == "qoq_pct":
-        return s.pct_change(periods=3) * 100
+        # Frequency-aware: тримесечно=1 период, месечно=3 (1 тримесечие). Гаси бъга
+        # където pct_change(3) върху тримесечна серия даваше 3-тримесечна промяна.
+        qp = max(1, _infer_yoy_periods(s) // 4)
+        return s.pct_change(periods=qp) * 100
     if transform == "first_diff":
         return first_diff(s)
     if transform == "z_score":
