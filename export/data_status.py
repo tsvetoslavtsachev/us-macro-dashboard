@@ -44,6 +44,16 @@ EXPECTED_LAG_DAYS = {
 # Multiplier за "stale" прага (напр. 2× expected → stale)
 STALE_MULTIPLIER = 2.0
 
+# Дължина на един период по каденция (дни) — за RELATIVE staleness в quick_briefing
+# (серия >3 периода зад най-свежата от СЪЩАТА каденция). Огледало на EU; различен от
+# EXPECTED_LAG_DAYS (lag-от-днес) — това е чистата дължина на периода.
+PERIOD_LENGTH_DAYS = {
+    "weekly":     7,
+    "monthly":    30,
+    "quarterly":  90,
+    "annually":   365,
+}
+
 
 # ============================================================
 # CLASSIFICATION

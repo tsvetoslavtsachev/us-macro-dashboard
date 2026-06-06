@@ -38,6 +38,7 @@ from sources.fred_adapter import FredAdapter
 from core.scorer import score_series
 from core.primitives import apply_transform
 from core.display import change_kind, compute_change, fmt_change, fmt_value
+from export.data_status import PERIOD_LENGTH_DAYS
 from analysis.breadth import compute_lens_breadth
 from analysis.health import lens_health
 from analysis.divergence import compute_cross_lens_divergence, compute_intra_lens_divergence
@@ -276,6 +277,28 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     })
 
 
+# ── relative staleness (каденс-aware) ────────────────────────────────────────
+def _relative_staleness(last_date, schedule: str, sched_ref: dict) -> tuple[bool, int]:
+    """Relative staleness спрямо най-свежата серия от СЪЩАТА каденция.
+
+    Серия е `stale` ако е >3 периода зад референцията (egregious laggard — серия
+    изостанала с месеци зад peer-ите си), не при нормален release lag. ЕДНА глобална
+    каденс-aware логика — огледало на quick_briefing._lens_readings (без per-series
+    tuning). `periods_behind` = закръглените периоди зад референцията (≥0).
+    """
+    ref = sched_ref.get(schedule)
+    if last_date is None or ref is None:
+        return False, 0
+    try:
+        gap_days = (pd.Timestamp(ref) - pd.Timestamp(last_date)).days
+    except Exception:
+        return False, 0
+    period = PERIOD_LENGTH_DAYS.get(schedule, 30)
+    periods_behind = max(0, int(round(gap_days / period)))
+    stale = gap_days > 3 * period
+    return stale, periods_behind
+
+
 # ── series_data.json builder ─────────────────────────────────────────────────
 def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
     """
@@ -284,6 +307,19 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
     """
     cutoff = pd.Timestamp(today) - pd.DateOffset(years=years)
     series_out = {}
+
+    # Per-каденция най-свежа дата (relative staleness reference) — над целия
+    # snapshot, същата каденс-aware логика като quick_briefing.
+    sched_ref: dict[str, pd.Timestamp] = {}
+    for _k, _s in snapshot.items():
+        if _s is None:
+            continue
+        _s = _s.dropna()
+        if _s.empty or not isinstance(_s.index, pd.DatetimeIndex):
+            continue
+        _sc = SERIES_CATALOG.get(_k, {}).get("release_schedule", "monthly")
+        if _sc not in sched_ref or _s.index[-1] > sched_ref[_sc]:
+            sched_ref[_sc] = _s.index[-1]
 
     for series_id in ALL_CHART_SERIES:
         if series_id not in snapshot:
@@ -351,6 +387,11 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
             polarity=polarity_for(series_id, primary_lens),
         )
 
+        # Relative staleness (каденс-aware) — серия изостанала с месеци зад peer-ите
+        # от същата каденция седи, но JSON-ът вече я флагва (уеб-таблото показва ⚠).
+        sched = meta.get("release_schedule", "monthly")
+        stale, periods_behind = _relative_staleness(latest_date, sched, sched_ref)
+
         series_out[series_id] = {
             "meta": {
                 "name_bg": meta.get("name_bg", series_id),
@@ -366,6 +407,8 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
             },
             "latest": {
                 "date": latest_date,
+                "stale": stale,
+                "periods_behind": periods_behind,
                 "value": _clean(latest_val),
                 "yoy_change": _clean(yoy_val),
                 "percentile": _clean(score_data.get("percentile")),

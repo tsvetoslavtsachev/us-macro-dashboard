@@ -284,10 +284,28 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
     50 = близката норма. Стойността е ТРАНСФОРМИРАНА (YoY % за номиналните серии),
     за да съвпада с това, което се скорира — виж LENS_SCORING_METHODOLOGY.md.
     """
-    from catalog.series import series_by_lens
+    from catalog.series import series_by_lens, SERIES_CATALOG
     from catalog.polarity import polarity_for
     from core.scorer import score_series
     from core.primitives import apply_transform
+    from export.data_status import PERIOD_LENGTH_DAYS
+
+    # Per-каденция най-свежа дата (relative staleness reference). Серия е "stale"
+    # само ако е >3 периода зад най-свежата серия от СЪЩАТА каденция — хваща само
+    # ЕГРЕГИОЗНИТЕ outlier-и (серия изостанала с месеци зад месечните си peer-и),
+    # без да флагва нормалния по-голям release lag на бавните серии (тримесечни
+    # national-accounts ~1-2 трим. lag е НОРМА, не stale).
+    sched_ref: dict[str, pd.Timestamp] = {}
+    for _k, _m in SERIES_CATALOG.items():
+        _s = snapshot.get(_k)
+        if _s is None:
+            continue
+        _s = _s.dropna()
+        if _s.empty or not isinstance(_s.index, pd.DatetimeIndex):
+            continue
+        _sc = _m.get("release_schedule", "monthly")
+        if _sc not in sched_ref or _s.index[-1] > sched_ref[_sc]:
+            sched_ref[_sc] = _s.index[-1]
 
     rows = []
     for meta in series_by_lens(lens):
@@ -317,6 +335,17 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
                 spark = [float(v) for v in t.values]
         except Exception:
             spark = []
+        # Staleness = серия е >3 периода зад най-свежата от същата каденция (relative).
+        stale = False
+        last_d = sd.get("last_date")
+        sched = meta.get("release_schedule", "monthly")
+        ref = sched_ref.get(sched)
+        if last_d and ref is not None:
+            try:
+                gap_days = (ref - pd.Timestamp(last_d)).days
+                stale = gap_days > 3 * PERIOD_LENGTH_DAYS.get(sched, 30)
+            except Exception:
+                stale = False
         rows.append({
             "label": meta.get("name_bg", key),
             "value": sd.get("display_value"),
@@ -326,6 +355,7 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
             "direction": sd.get("direction", "flat"),
             "spark": spark,
             "date": sd.get("last_date"),
+            "stale": stale,
             "absz": abs(sd.get("health_z") or 0.0),
             "dev_sigma": sd.get("dev_sigma"),
             "severity": sd.get("severity"),
@@ -375,9 +405,16 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
                             f'style="color:{sev_color};font-size:10px;font-weight:600">'
                             f'{mag:.1f}σ</span>')
             lbl = _html.escape(str(rd["label"]))
+            stale_badge = ""
+            if rd.get("stale") and rd.get("date"):
+                d = str(rd["date"])
+                stale_badge = (
+                    f' <span style="color:#d29922;font-size:10px;font-weight:700;white-space:nowrap"'
+                    f' title="Данните са остарели — последно наблюдение {d}; източникът не е публикувал по-ново">⚠ {d[:7]}</span>'
+                )
             rows_html += f"""
             <tr style="border-top:1px solid #21262d">
-              <td style="padding:5px 4px;color:#e6edf3;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
+              <td style="padding:5px 4px;color:#e6edf3;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}{stale_badge}</td>
               <td style="padding:5px 4px;text-align:center;line-height:0">{spark_svg}</td>
               <td style="padding:5px 4px;text-align:right;color:#c9d1d9;font-weight:600;white-space:nowrap">{_fmt_reading(rd['value'], rd.get('is_pct'), rd.get('is_rate'))}</td>
               <td style="padding:5px 4px;text-align:right;white-space:nowrap"><b style="color:{row_color}">{hv:.0f}</b> <span style="color:{dir_color};font-size:11px">{arrow}</span>{sev_chip}</td>
