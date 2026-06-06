@@ -1,22 +1,14 @@
 """
 econ_v2 — Entry Point
 ======================
-Три workflow-а:
+Workflow-и:
 
-    python run.py              # Legacy dashboard (Labor + Inflation + Growth)
     python run.py --status     # Phase 1: Data Status Screen
     python run.py --briefing   # Phase 3: Weekly Briefing + Explorer
 
 Глобални опции (работят със --status и --briefing):
     --refresh        Force-fetch всички FRED серии преди генериране
     --no-browser     Не отваря HTML в браузъра (CI / headless)
-
-Legacy workflow:
-  1. Зарежда FRED данни (кеш 12h)
-  2. Изчислява Labor, Inflation, Growth модули
-  3. Генерира composite Macro Score
-  4. Записва dashboard_YYYY-MM-DD.html в output/
-  5. Отваря файла в браузъра
 
 Status workflow (Phase 1):
   1. Чете cache от sources/fred_adapter.py
@@ -81,98 +73,8 @@ def _bloomberg_bridge_snapshot() -> dict:
 from config import (
     FRED_API_KEY,
     FIRECRAWL_API_KEY,
-    CACHE_TTL_HOURS,
-    MODULE_WEIGHTS,
-    MACRO_REGIMES,
     OUTPUT_DIR,
 )
-
-
-def main():
-    # Legacy imports — lazy, за да не пречат на --status при липсващ fredapi/etc
-    from core.fred_client import FredClient
-    from core.scorer import get_regime
-    import modules.labor as labor_mod
-    import modules.inflation as inflation_mod
-    import modules.growth as growth_mod
-    from export import html_generator
-
-    print("\n" + "═" * 60)
-    print("  ⚡  Economic Intelligence Dashboard  v2.0")
-    print("═" * 60)
-    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
-    print("═" * 60 + "\n")
-
-    # ── 1. FRED Client ────────────────────────────────────────────
-    print("📡 Connecting to FRED...")
-    client = FredClient(api_key=FRED_API_KEY, cache_ttl_hours=CACHE_TTL_HOURS)
-
-    # ── 2. Run Modules ────────────────────────────────────────────
-    print("\n🔬 Running modules...")
-    modules_results = []
-
-    for mod_name, mod, weight_key in [
-        ("Labor Market",     labor_mod,     "labor"),
-        ("Inflation",        inflation_mod, "inflation"),
-        ("Growth & Activity",growth_mod,    "growth"),
-    ]:
-        try:
-            result = mod.run(client)
-            modules_results.append(result)
-            score = result.get("composite", 50.0)
-            regime = result.get("regime", "—")
-            print(f"  ✅ {mod_name:20s} → score: {score:5.1f}  [{regime}]")
-        except Exception as e:
-            print(f"  ❌ {mod_name}: {e}")
-            import traceback; traceback.print_exc()
-
-    # ── 3. Composite Macro Score ──────────────────────────────────
-    active_weights = {
-        "labor":     MODULE_WEIGHTS["labor"],
-        "inflation": MODULE_WEIGHTS["inflation"],
-        "growth":    MODULE_WEIGHTS["growth"],
-    }
-    total_weight = sum(active_weights.values())
-
-    composite = 0.0
-    for r in modules_results:
-        mod_key = r["module"]
-        w = active_weights.get(mod_key, 0)
-        composite += r.get("composite", 50.0) * w
-
-    composite = round(composite / total_weight, 1)
-    regime_label, regime_color = get_regime(composite, MACRO_REGIMES)
-
-    print(f"\n{'═'*60}")
-    print(f"  📊 MACRO COMPOSITE SCORE: {composite:.1f} / 100")
-    print(f"  🏷  REGIME: {regime_label}")
-    print(f"{'═'*60}\n")
-
-    # ── 4. Save cache ─────────────────────────────────────────────
-    client.save_cache()
-
-    # ── 5. Generate HTML ──────────────────────────────────────────
-    print("🎨 Generating dashboard HTML...")
-    html = html_generator.generate(
-        modules_data=modules_results,
-        composite_score=composite,
-        composite_regime=regime_label,
-        composite_color=regime_color,
-    )
-
-    output_path = BASE_DIR / OUTPUT_DIR
-    out_file = html_generator.save(html, str(output_path))
-    print(f"  ✅ Saved: {out_file.name}")
-
-    # ── 6. Open in browser ────────────────────────────────────────
-    abs_path = out_file.resolve()
-    url = abs_path.as_uri()
-    print(f"\n🌐 Opening dashboard in browser...")
-    print(f"   {abs_path}")
-    webbrowser.open(url)
-
-    print("\n✅ Done! Dashboard is ready.\n")
-    return str(abs_path)
 
 
 # ============================================================
@@ -995,4 +897,8 @@ if __name__ == "__main__":
     elif args.status:
         main_status(args)
     else:
-        main()
+        print("❌ Не е избран режим. Избери един от: --briefing, --status, "
+              "--refresh-only, --export-context, --fetch-ism, --fetch-confboard, "
+              "--fetch-zillow, --fetch-housing-scrapers, --import-bloomberg.")
+        print("   Пример: python run.py --briefing")
+        sys.exit(2)

@@ -74,8 +74,7 @@ us-macro-dashboard/
 ├── config.py                 # FRED key, weights, regime thresholds
 ├── catalog/series.py         # 71 registered FRED series with metadata
 ├── sources/fred_adapter.py   # FRED fetch + JSON cache (12h TTL)
-├── core/                     # primitives: percentile_rank, z_score, regime labels
-├── modules/                  # per-lens scoring (labor.py, inflation.py, ...)
+├── core/                     # primitives: percentile_rank, z_score
 ├── analysis/
 │   ├── breadth.py            # per-lens breadth (share of series in each regime)
 │   ├── divergence.py         # cross-lens pair readings
@@ -88,7 +87,6 @@ us-macro-dashboard/
 │   └── executive.py          # composite score + regime summary
 ├── export/
 │   ├── weekly_briefing.py    # HTML briefing generator
-│   ├── html_generator.py     # dashboard alternative
 │   └── explorer.py           # series drill-down pages
 ├── scripts/
 │   ├── _utils.py             # journal layer + sandbox scaffolding

@@ -20,12 +20,10 @@ econ_v2/
 ├── config.py                  ← FRED ключ, тегла, режими
 ├── catalog/series.py          ← регистър на всички FRED tickers
 ├── sources/fred_adapter.py    ← FRED fetch + cache
-├── modules/                   ← 7 макро модула (labor, inflation, credit, ...)
 ├── analysis/
 │   ├── macro_vector.py        ← 8-dim macro state + z-scoring
 │   └── analog_engine.py       ← Historical Analog Engine
 ├── export/
-│   ├── html_generator.py      ← dashboard
 │   └── weekly_briefing.py     ← briefing + Свързани бележки секция
 ├── journal/                   ← markdown research notes (по тема)
 │   ├── credit/ labor/ inflation/ growth/ analogs/ regime/ methodology/
@@ -85,7 +83,7 @@ path = new_sandbox_script("HY spreads vs VIX divergence")
 
 Ако серия липсва в snapshot-а, провери `catalog/series.py` — там са регистрирани всички tickers.
 
-**4. Направи анализа.** Прости numpy/pandas трансформации — z-score, rolling correlation, percentile rank. Печатай междинни резултати. `core/scorer.py` има готови primitives: `percentile_rank`, `z_score`, `historical_context`.
+**4. Направи анализа.** Прости numpy/pandas трансформации — z-score, rolling correlation, percentile rank. Печатай междинни резултати. `core/scorer.py` има готови primitives: `percentile_rank`, `z_score`.
 
 **5. Ако струва — запиши journal entry.** В края на sandbox скрипта извикай:
 ```python
