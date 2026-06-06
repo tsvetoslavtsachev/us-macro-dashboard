@@ -1883,6 +1883,32 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
 
 
 # ============================================================
+# is_rate деривация (parity с EU; за дисплей „%" на лихва/процент серии)
+# ============================================================
+# is_rate=True → стойността (след transform) е процент/лихва → картата лепи „%".
+# Деривира се по ЕДНО правило вместо 99 ръчни полета (изчислително идентично на
+# EU is_rate convention): всеки %-темп (yoy/mom/qoq) + курираният списък лихва-ниво
+# серии (доходности, спредове, OIS, ставки, инфлационни темпове, %-дялове).
+# Индекси/бройки/часове/доверие → False.
+_PCT_TRANSFORMS = {"yoy_pct", "mom_pct", "qoq_pct"}
+_RATE_LEVEL_SERIES = {
+    "UNRATE", "U6RATE", "CIVPART", "EMRATIO", "JTSQUR", "PSAVERT",
+    "FED_FUNDS", "SOFR", "UST_10Y", "UST_2Y",
+    "US_SOFR_OIS_3M", "US_SOFR_OIS_6M", "US_SOFR_OIS_1Y", "US_SOFR_OIS_2Y",
+    "YC_10Y2Y", "YC_10Y3M", "HY_OAS", "IG_OAS", "CC_DELINQUENCY",
+    "MORTGAGE30US", "MORTGAGE15US",
+    "BREAKEVEN_10Y", "BREAKEVEN_5Y5Y", "MICH_INFL_1Y",
+    "MEDIAN_CPI", "TRIMMED_MEAN_CPI", "STICKY_CPI", "COMP_GDP_SHARE",
+}
+for _k, _m in SERIES_CATALOG.items():
+    if "is_rate" not in _m:
+        _m["is_rate"] = (
+            _m.get("transform", "level") in _PCT_TRANSFORMS
+            or _k in _RATE_LEVEL_SERIES
+        )
+
+
+# ============================================================
 # HELPER FUNCTIONS
 # ============================================================
 

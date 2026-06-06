@@ -224,14 +224,20 @@ def _fmt_val(v, decimals: int = 2) -> str:
         return str(v)
 
 
-def _fmt_reading(v, is_pct: bool = False) -> str:
-    """Стойност на per-series ред: трансформираните серии → '+3.2%' (темпът,
-    който се скорира); level серии → суровото ниво."""
+def _fmt_reading(v, is_pct: bool = False, is_rate: bool = False) -> str:
+    """Стойност на per-series ред: %-темпове → '+3.2%' (със знак, темпът който се
+    скорира); лихва/процент level серии (доходност, спред, инфл. темп) → '5.23%'
+    (без знак — нивото е процент); индекс/бройка → суровото ниво."""
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return "—"
     if is_pct:
         try:
             return f"{float(v):+.1f}%"
+        except Exception:
+            return str(v)
+    if is_rate:
+        try:
+            return f"{_fmt_val(v)}%"
         except Exception:
             return str(v)
     return _fmt_val(v)
@@ -315,6 +321,7 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
             "label": meta.get("name_bg", key),
             "value": sd.get("display_value"),
             "is_pct": sd.get("display_is_pct", False),
+            "is_rate": meta.get("is_rate", False),
             "health": sd.get("score"),
             "direction": sd.get("direction", "flat"),
             "spark": spark,
@@ -372,7 +379,7 @@ def _render_lens_cards(exec_snapshot, snapshot) -> str:
             <tr style="border-top:1px solid #21262d">
               <td style="padding:5px 4px;color:#e6edf3;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{lbl}">{lbl}</td>
               <td style="padding:5px 4px;text-align:center;line-height:0">{spark_svg}</td>
-              <td style="padding:5px 4px;text-align:right;color:#c9d1d9;font-weight:600;white-space:nowrap">{_fmt_reading(rd['value'], rd.get('is_pct'))}</td>
+              <td style="padding:5px 4px;text-align:right;color:#c9d1d9;font-weight:600;white-space:nowrap">{_fmt_reading(rd['value'], rd.get('is_pct'), rd.get('is_rate'))}</td>
               <td style="padding:5px 4px;text-align:right;white-space:nowrap"><b style="color:{row_color}">{hv:.0f}</b> <span style="color:{dir_color};font-size:11px">{arrow}</span>{sev_chip}</td>
             </tr>"""
         table_html = ""
