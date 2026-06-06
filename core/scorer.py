@@ -52,25 +52,6 @@ def percentile_rank(current: float, history: pd.Series) -> float:
     return float(np.sum(history < current) / len(history) * 100)
 
 
-def z_score(current: float, history: pd.Series) -> float:
-    """Стандартизирана стойност спрямо историческото разпределение."""
-    if len(history) == 0 or history.std() == 0:
-        return 0.0
-    return float((current - history.mean()) / history.std())
-
-
-def normalize(value: float, lo: float, hi: float, invert: bool = False) -> float:
-    """
-    Линейна нормализация към 0–100.
-    lo → 0, hi → 100 (или обратното ако invert=True)
-    """
-    if hi == lo:
-        return 50.0
-    score = (value - lo) / (hi - lo) * 100
-    score = max(0.0, min(100.0, score))
-    return 100.0 - score if invert else score
-
-
 def _health_z(val: float, med: float, scale: float, polarity: Any) -> float:
     """Робастен z → health-z (по-високо = по-здраво). Огледало на
     analysis/health.py::series_health_z полярностната логика."""

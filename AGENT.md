@@ -83,7 +83,7 @@ path = new_sandbox_script("HY spreads vs VIX divergence")
 
 Ако серия липсва в snapshot-а, провери `catalog/series.py` — там са регистрирани всички tickers.
 
-**4. Направи анализа.** Прости numpy/pandas трансформации — z-score, rolling correlation, percentile rank. Печатай междинни резултати. `core/scorer.py` има готови primitives: `percentile_rank`, `z_score`.
+**4. Направи анализа.** Прости numpy/pandas трансформации — z-score, rolling correlation, percentile rank. Печатай междинни резултати. `core/scorer.py` има `percentile_rank`; `core/primitives.py` има `z_score`, `momentum`, `breadth`.
 
 **5. Ако струва — запиши journal entry.** В края на sandbox скрипта извикай:
 ```python

@@ -29,32 +29,9 @@ if not FRED_API_KEY or not FIRECRAWL_API_KEY:
             elif key_s == "FIRECRAWL_API_KEY" and not FIRECRAWL_API_KEY:
                 FIRECRAWL_API_KEY = val_s
 
-# ─── Кеш (часове преди следващ FRED pull) ───────────────────────────────────
-CACHE_TTL_HOURS = 12
-
 # ─── Исторически прозорец за percentile/analog изчисления ───────────────────
 HISTORY_START = "2000-01-01"       # откога смятаме percentiles
 ANALOG_HISTORY_START = "1970-01-01"  # откога търсим аналози (по-дълго)
-
-# ─── Модулни тегла за Composite Macro Score ──────────────────────────────────
-MODULE_WEIGHTS = {
-    "labor":     0.20,
-    "inflation": 0.20,
-    "growth":    0.20,
-    "credit":    0.15,
-    "housing":   0.10,
-    "fed":       0.10,
-    "consumer":  0.05,
-}
-
-# ─── Macro режими (composite score → label) ──────────────────────────────────
-MACRO_REGIMES = [
-    (80, "EXPANSIONARY",  "#00c853"),
-    (65, "HEALTHY",       "#69f0ae"),
-    (50, "MIXED",         "#ffd600"),
-    (35, "DETERIORATING", "#ff6d00"),
-    (0,  "RECESSIONARY",  "#d50000"),
-]
 
 # ─── Изходна папка ───────────────────────────────────────────────────────────
 OUTPUT_DIR = "output"
