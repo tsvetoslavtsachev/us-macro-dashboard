@@ -35,6 +35,7 @@ from config import FRED_API_KEY
 from catalog.series import SERIES_CATALOG
 from catalog.polarity import polarity_for
 from sources.fred_adapter import FredAdapter
+from sources.external_loader import load_external_series
 from core.scorer import score_series
 from core.primitives import apply_transform
 from core.display import change_kind, compute_change, fmt_change, fmt_value
@@ -75,6 +76,9 @@ CHART_SERIES = {
     "growth": [
         "INDPRO", "RSXFS", "DGORDER",
         "UMCSENT", "CFNAIMA3", "PHILLY_FED", "PSAVERT",
+        # External (ISM, Conference Board) + bloomberg PMI — долени в main()
+        "ISM_MFG_PMI", "ISM_SVCS_PMI", "CB_LEI", "CB_CCI",
+        "US_PMI_COMPOSITE", "US_PMI_MFG", "US_PMI_SVCS",
     ],
     "liquidity": [
         "FED_FUNDS", "SOFR",
@@ -82,9 +86,13 @@ CHART_SERIES = {
         "HY_OAS", "IG_OAS", "NFCI", "STLFSI",
         "M2", "FED_BS", "TOTAL_RESERVES",
         "C_AND_I_LOANS", "CC_DELINQUENCY",
+        # Bloomberg bridge — SOFR-OIS спредове (funding stress)
+        "US_SOFR_OIS_3M", "US_SOFR_OIS_6M", "US_SOFR_OIS_1Y", "US_SOFR_OIS_2Y",
     ],
     "housing": [
         "PERMIT", "HOUST",
+        # Bloomberg bridge — sentiment/activity (ZHVI изключен: nishka 4, не се освежава)
+        "NAHB_HMI", "MBA_PURCHASE_IDX", "MBA_REFINANCE_IDX", "NAR_PHSI",
     ],
 }
 
@@ -128,6 +136,18 @@ def _safe_dump(obj: Any, path: Path) -> None:
         json.dump(obj, f, ensure_ascii=False, indent=2, default=str)
     size_kb = path.stat().st_size / 1024
     print(f"  ✅ {path.name} ({size_kb:.1f} KB)")
+
+
+def _bloomberg_bridge_snapshot() -> dict:
+    """Bloomberg bridge серии (read-only) — parquet локално / committed JSON в CI.
+    Огледало на run.py._bloomberg_bridge_snapshot (lazy import — без network)."""
+    try:
+        from sources.bloomberg_bridge_adapter import BloombergBridgeAdapter
+        snap = BloombergBridgeAdapter(base_dir=BASE_DIR).get_snapshot(SERIES_CATALOG)
+        return snap or {}
+    except Exception as e:
+        print(f"  ⚠ Bloomberg bridge skip: {e}")
+        return {}
 
 
 # ── macro_state.json builder ─────────────────────────────────────────────────
@@ -476,8 +496,18 @@ def main(args) -> None:
         else:
             print("📦 Cache fresh — пропускам refresh.\n")
 
-    # ── Snapshot ────────────────────────────────────────────────────────────
+    # ── Snapshot (FRED + external ISM/CB + bloomberg bridge) ─────────────────
+    # Огледало на main_briefing/EU: долива external + bloomberg, за да съвпада
+    # вселената на API-то с briefing-а (иначе macro_state/series_data бяха FRED-only).
     snapshot = adapter.get_snapshot(SERIES_CATALOG.keys())
+    external = load_external_series(SERIES_CATALOG, BASE_DIR)
+    if external:
+        snapshot.update(external)
+        print(f"📦 External: +{len(external)} ISM/CB серии")
+    bridge = _bloomberg_bridge_snapshot()
+    if bridge:
+        snapshot.update(bridge)
+        print(f"📦 Bloomberg bridge: +{len(bridge)} серии")
     print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
 
     if len(snapshot) < 10:
