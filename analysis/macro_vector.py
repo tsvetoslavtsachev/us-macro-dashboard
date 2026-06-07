@@ -141,7 +141,8 @@ def _to_month_end(s: pd.Series) -> pd.Series:
 
 def _yoy_pct(s: pd.Series) -> pd.Series:
     """12-month % change на monthly серия."""
-    return (s / s.shift(12) - 1.0) * 100.0
+    # Zero-base guard: стойност отпреди 12м = 0 → деление → ±inf → NaN.
+    return ((s / s.shift(12) - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)
 
 
 def _compute_sahm_rule(unrate_monthly: pd.Series) -> pd.Series:

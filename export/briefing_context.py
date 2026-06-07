@@ -202,7 +202,8 @@ def _yoy_pct(series: Optional[pd.Series], periods: Optional[int] = None) -> Opti
         periods = _infer_yoy_periods(s)
     if len(s) <= periods:
         return None
-    pct = s.pct_change(periods=periods) * 100
+    # Zero-base guard: база през 0 → pct_change ±inf → NaN (existing isna клон го хваща).
+    pct = (s.pct_change(periods=periods) * 100).replace([np.inf, -np.inf], np.nan)
     last = pct.iloc[-1]
     if pd.isna(last):
         return None
