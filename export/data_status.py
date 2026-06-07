@@ -17,6 +17,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
+import pandas as pd
+
 
 # ============================================================
 # CONFIG — known delays (for shutdown aftermath и подобни)
@@ -53,6 +55,58 @@ PERIOD_LENGTH_DAYS = {
     "quarterly":  90,
     "annually":   365,
 }
+
+# Серия е "egregious laggard" ако е >RELATIVE_STALE_PERIODS периода зад най-свежата
+# серия от СЪЩАТА каденция (огледало на _relative_staleness в export_api).
+RELATIVE_STALE_PERIODS = 3
+
+
+def build_regime_snapshot(snapshot: dict) -> tuple[dict, list[str]]:
+    """Връща (snapshot без замръзнали серии, сортиран списък изключени ключове).
+
+    Замръзнала серия (egregious laggard — >RELATIVE_STALE_PERIODS периода зад
+    най-свежата серия от СЪЩАТА каденция) не бива да гласува със стария си наклон в
+    breadth → режим. Това е РЕЖИМНИЯТ snapshot; дисплейните пътища (build_series_data,
+    lens cards) остават върху ПЪЛНИЯ snapshot и флагват per-series staleness отделно.
+
+    Релативно спрямо peer-ите, не абсолютно спрямо днес — затова униформено забавяне
+    (напр. shutdown лаг на всички серии) НЕ задейства gate-а; пада само серия,
+    изостанала зад своите еднокаденчни peer-и. Огледало на `_relative_staleness`.
+    """
+    from catalog.series import SERIES_CATALOG  # lazy: избягва import цикъл
+
+    # Per-каденция най-свежа дата (reference).
+    sched_ref: dict[str, pd.Timestamp] = {}
+    for key, series in snapshot.items():
+        if series is None:
+            continue
+        clean = series.dropna()
+        if clean.empty or not isinstance(clean.index, pd.DatetimeIndex):
+            continue
+        sched = SERIES_CATALOG.get(key, {}).get("release_schedule", "monthly")
+        last = clean.index[-1]
+        if sched not in sched_ref or last > sched_ref[sched]:
+            sched_ref[sched] = last
+
+    clean_snapshot: dict = {}
+    excluded: list[str] = []
+    for key, series in snapshot.items():
+        if series is None:
+            clean_snapshot[key] = series
+            continue
+        clean = series.dropna()
+        if clean.empty or not isinstance(clean.index, pd.DatetimeIndex):
+            clean_snapshot[key] = series
+            continue
+        sched = SERIES_CATALOG.get(key, {}).get("release_schedule", "monthly")
+        ref = sched_ref.get(sched)
+        period = PERIOD_LENGTH_DAYS.get(sched, 30)
+        gap_days = (ref - clean.index[-1]).days if ref is not None else 0
+        if gap_days > RELATIVE_STALE_PERIODS * period:
+            excluded.append(key)
+        else:
+            clean_snapshot[key] = series
+    return clean_snapshot, sorted(excluded)
 
 
 # ============================================================

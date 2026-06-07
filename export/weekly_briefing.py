@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 from catalog.series import SERIES_CATALOG, ALLOWED_LENSES
 from core.display import change_kind, compute_change, fmt_change, fmt_value
 from analysis.breadth import compute_lens_breadth
+from export.data_status import build_regime_snapshot
 from analysis.divergence import (
     compute_intra_lens_divergence,
     compute_cross_lens_divergence,
@@ -129,16 +130,20 @@ def generate_weekly_briefing(
         today = date.today()
 
     # ─── Compute всички доклади ───
+    # Режимът се смята върху snapshot БЕЗ замръзнали серии (за да не гласува стар
+    # наклон); дисплейните секции (threshold flags, state, рендиране) остават върху
+    # пълния snapshot.
+    regime_snapshot, _ = build_regime_snapshot(snapshot)
     lens_reports = {
-        lens: compute_lens_breadth(lens, snapshot) for lens in LENS_ORDER
+        lens: compute_lens_breadth(lens, regime_snapshot) for lens in LENS_ORDER
     }
     intra_reports = {
-        lens: compute_intra_lens_divergence(lens, snapshot) for lens in LENS_ORDER
+        lens: compute_intra_lens_divergence(lens, regime_snapshot) for lens in LENS_ORDER
     }
-    cross_report = compute_cross_lens_divergence(snapshot)
-    nc_report = compute_non_consensus(snapshot)
+    cross_report = compute_cross_lens_divergence(regime_snapshot)
+    nc_report = compute_non_consensus(regime_snapshot)
     anomaly_report = compute_anomalies(
-        snapshot, z_threshold=2.0, top_n=top_anomalies_n, lookback_years=5
+        regime_snapshot, z_threshold=2.0, top_n=top_anomalies_n, lookback_years=5
     )
     exec_snapshot = compute_executive_summary(
         cross_report, lens_reports, anomaly_report, nc_report,

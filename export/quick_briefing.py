@@ -34,6 +34,7 @@ from analysis.health import lens_health
 from analysis.divergence import compute_cross_lens_divergence
 from analysis.anomaly import compute_anomalies
 from analysis.non_consensus import compute_non_consensus
+from export.data_status import build_regime_snapshot
 
 
 LENS_ICON = {
@@ -643,19 +644,24 @@ def generate_quick_briefing(
     if today is None:
         today = date.today()
 
+    # Режимът се смята върху snapshot БЕЗ замръзнали серии (за да не гласува
+    # стар наклон); дисплеят (_render_html) остава върху пълния snapshot със
+    # stale значки.
+    regime_snapshot, _ = build_regime_snapshot(snapshot)
+
     lens_reports = {
-        lens: compute_lens_breadth(lens, snapshot) for lens in LENS_ORDER
+        lens: compute_lens_breadth(lens, regime_snapshot) for lens in LENS_ORDER
     }
-    cross_report = compute_cross_lens_divergence(snapshot)
+    cross_report = compute_cross_lens_divergence(regime_snapshot)
     anomaly_report = compute_anomalies(
-        snapshot, z_threshold=2.0, top_n=10, lookback_years=5
+        regime_snapshot, z_threshold=2.0, top_n=10, lookback_years=5
     )
-    nc_report = compute_non_consensus(snapshot)
+    nc_report = compute_non_consensus(regime_snapshot)
     exec_snapshot = compute_executive_summary(
         cross_report, lens_reports, anomaly_report, nc_report,
     )
 
-    composite = _composite_score(exec_snapshot, snapshot)
+    composite = _composite_score(exec_snapshot, regime_snapshot)
 
     html_out = _render_html(
         today, composite, exec_snapshot, deep_link=deep_link,
