@@ -87,12 +87,15 @@ def yoy_pct(series: pd.Series) -> pd.Series:
     if s.empty:
         return pd.Series(dtype=float)
     freq_periods = _infer_yoy_periods(s)
-    return s.pct_change(periods=freq_periods) * 100
+    # Zero/near-zero база guard: при база минаваща през 0 (ratio/спред/нетна позиция)
+    # pct_change → ±inf (фалшив екстремум). Заменяме с NaN (легитимно "недефинирано").
+    # Безвредно за нивата-индекси днес; образец EA_TOT_MONTHLY (briefing_context).
+    return (s.pct_change(periods=freq_periods) * 100).replace([np.inf, -np.inf], np.nan)
 
 
 def mom_pct(series: pd.Series) -> pd.Series:
     """Month-over-month процентна промяна."""
-    return series.dropna().pct_change(periods=1) * 100
+    return (series.dropna().pct_change(periods=1) * 100).replace([np.inf, -np.inf], np.nan)
 
 
 def rolling_mean(series: pd.Series, window: int) -> pd.Series:
@@ -151,7 +154,7 @@ def apply_transform(series: pd.Series, transform: str) -> pd.Series:
         # Frequency-aware: тримесечно=1 период, месечно=3 (1 тримесечие). Гаси бъга
         # където pct_change(3) върху тримесечна серия даваше 3-тримесечна промяна.
         qp = max(1, _infer_yoy_periods(s) // 4)
-        return s.pct_change(periods=qp) * 100
+        return (s.pct_change(periods=qp) * 100).replace([np.inf, -np.inf], np.nan)
     if transform == "first_diff":
         return first_diff(s)
     if transform == "z_score":
