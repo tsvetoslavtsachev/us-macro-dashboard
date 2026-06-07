@@ -1,12 +1,12 @@
 {
   "region": "US",
-  "as_of_date": "2026-06-06",
-  "generated_at": "2026-06-06T20:59:53.471792Z",
+  "as_of_date": "2026-06-07",
+  "generated_at": "2026-06-07T19:15:41.816548Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
     "css_class": "regime-stag",
-    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Инфлация и цени — breadth 76% (разширяване), 5 аномалии, 1 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: HPIPONM226S, US_PMI_MFG, LABOR_SHARE_NBS (нови 5-годишни екстремуми).",
+    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Инфлация и цени — breadth 76% (разширяване), 5 аномалии, 1 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: HPIPONM226S, LABOR_SHARE_NBS (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: HPIPONM226S z=-2.76 · NEW-5Y-MIN",
       "4 нови екстремуми в top-10 (lookback 5г.)",
@@ -194,8 +194,8 @@
       ]
     },
     "growth": {
-      "score": 43.5,
-      "health_z": -0.26,
+      "score": 43.4,
+      "health_z": -0.266,
       "direction": "mixed",
       "breadth_pct": 40.0,
       "anomalies_count": 2,
@@ -396,8 +396,8 @@
       ]
     },
     "liquidity": {
-      "score": 50.9,
-      "health_z": 0.035,
+      "score": 51.1,
+      "health_z": 0.044,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 0,
@@ -579,21 +579,6 @@
       "narrative_hint": "Hard data компонент. Скочи >30% в COVID — когато survey и hard data разминават, сигналът укрепва."
     },
     {
-      "series_id": "US_PMI_MFG",
-      "name_bg": "S&P Global US Manufacturing PMI",
-      "lens": [
-        "growth"
-      ],
-      "peer_group": "diffusion_indices",
-      "z_score": 2.387,
-      "direction": "up",
-      "current_value": 55.3,
-      "last_date": "2026-05-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "Markit mfg — comparable cross-country. ISM е US-only."
-    },
-    {
       "series_id": "LABOR_SHARE_NBS",
       "name_bg": "Labor share — нефермерски бизнес",
       "lens": [
@@ -638,6 +623,21 @@
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "Household очаквания. По-шумни от market-based, но по-ранни. Extreme movements сигнализират de-anchoring risk."
+    },
+    {
+      "series_id": "US_PMI_MFG",
+      "name_bg": "S&P Global US Manufacturing PMI",
+      "lens": [
+        "growth"
+      ],
+      "peer_group": "diffusion_indices",
+      "z_score": 2.283,
+      "direction": "up",
+      "current_value": 55.1,
+      "last_date": "2026-05-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "Markit mfg — comparable cross-country. ISM е US-only."
     },
     {
       "series_id": "CSUSHPISA",
