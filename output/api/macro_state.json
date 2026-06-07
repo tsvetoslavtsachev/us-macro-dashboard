@@ -1,7 +1,7 @@
 {
   "region": "US",
   "as_of_date": "2026-06-07",
-  "generated_at": "2026-06-07T19:15:41.816548Z",
+  "generated_at": "2026-06-07T22:06:55.006308Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
@@ -12,7 +12,9 @@
       "4 нови екстремуми в top-10 (lookback 5г.)",
       "Активни двойки: Stagflation test=both_up; Growth × Labor=a_up_b_down; Inflation anchoring=a_up_b_down"
     ],
-    "primary_driver": "stagflation_test"
+    "primary_driver": "stagflation_test",
+    "stale_excluded_count": 0,
+    "stale_excluded_keys": []
   },
   "lenses": {
     "labor": {
