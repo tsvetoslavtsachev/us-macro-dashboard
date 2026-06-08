@@ -1,12 +1,12 @@
 {
   "region": "US",
   "as_of_date": "2026-06-08",
-  "generated_at": "2026-06-08T17:26:12.045857Z",
+  "generated_at": "2026-06-08T21:30:23.857314Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
     "css_class": "regime-stag",
-    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Инфлация и цени — breadth 76% (разширяване), 5 аномалии, 1 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: HPIPONM226S, LABOR_SHARE_NBS (нови 5-годишни екстремуми).",
+    "narrative": "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар остава tight, а инфлационният натиск е broad-based. Най-отклонена леща: Монетарна политика и кредит — breadth 76% (разширяване), 0 аномалии, 0 нови екстремума. Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи. За наблюдение следващия релиз: HPIPONM226S, LABOR_SHARE_NBS (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: HPIPONM226S z=-2.76 · NEW-5Y-MIN",
       "4 нови екстремуми в top-10 (lookback 5г.)",
@@ -248,8 +248,8 @@
       ]
     },
     "inflation": {
-      "score": 33.9,
-      "health_z": -0.669,
+      "score": 34.0,
+      "health_z": -0.665,
       "direction": "contracting",
       "breadth_pct": 22.2,
       "anomalies_count": 5,
@@ -398,55 +398,13 @@
       ]
     },
     "liquidity": {
-      "score": 51.0,
-      "health_z": 0.04,
+      "score": 50.9,
+      "health_z": 0.037,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
-        {
-          "lens": "liquidity",
-          "group_a": "financial_conditions",
-          "group_b": "term_structure",
-          "breadth_a": 1.0,
-          "breadth_b": 0.25,
-          "diff": 0.75,
-          "interpretation": "financial_conditions е по-силна (100%) отколкото term_structure (25%) — разминаване +75%.",
-          "name_bg": "financial_conditions vs term_structure",
-          "pair_id": "liquidity__financial_conditions__vs__term_structure",
-          "slot_a_label": "financial_conditions",
-          "slot_b_label": "term_structure",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "money_supply",
-          "group_b": "term_structure",
-          "breadth_a": 1.0,
-          "breadth_b": 0.25,
-          "diff": 0.75,
-          "interpretation": "money_supply е по-силна (100%) отколкото term_structure (25%) — разминаване +75%.",
-          "name_bg": "money_supply vs term_structure",
-          "pair_id": "liquidity__money_supply__vs__term_structure",
-          "slot_a_label": "money_supply",
-          "slot_b_label": "term_structure",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "policy_rates",
-          "group_b": "term_structure",
-          "breadth_a": 0.833,
-          "breadth_b": 0.25,
-          "diff": 0.583,
-          "interpretation": "policy_rates е по-силна (83%) отколкото term_structure (25%) — разминаване +58%.",
-          "name_bg": "policy_rates vs term_structure",
-          "pair_id": "liquidity__policy_rates__vs__term_structure",
-          "slot_a_label": "policy_rates",
-          "slot_b_label": "term_structure",
-          "state": "a_up_b_down"
-        },
         {
           "lens": "liquidity",
           "group_a": "banking_credit",
@@ -793,8 +751,8 @@
       ],
       "signal_strength": "medium",
       "percentile": null,
-      "z_score": 0.252,
-      "direction": "down"
+      "z_score": 0.242,
+      "direction": "up"
     }
   ]
 }
