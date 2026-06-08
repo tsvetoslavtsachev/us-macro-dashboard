@@ -32,8 +32,10 @@ def test_new_series_in_chart_set():
         assert k in ALL_CHART_SERIES, f"{k} липсва в CHART_SERIES"
 
 
-def test_zhvi_excluded():
-    # nishka 4 — ZHVI не се освежава от никой job → не го чертаем.
+def test_home_price_series_in_chart():
+    # ZHVI пенсиониран 2026-06-08 (дублира Case-Shiller, corr 0.957). Ценовият бенчмарк
+    # сега е FRED Case-Shiller National. Виж docs/decisions/ZHVI-retirement-2026-06-08.md.
+    assert "CSUSHPISA" in ALL_CHART_SERIES
     assert "ZHVI_US_SFR_CONDO" not in ALL_CHART_SERIES
 
 

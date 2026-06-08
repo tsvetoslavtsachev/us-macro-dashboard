@@ -11,7 +11,7 @@ sources/press_release_scraper.py
 ДИЗАЙН (Phase B/architecture-first):
   • Един BaseAdapter с urllib + JSON cache + history merge logic
   • Три специфични subclass-а; всеки декларира URL + parse strategy
-  • Cache shape е identical с ism_cache / confboard_cache / zillow_cache:
+  • Cache shape е identical с ism_cache / confboard_cache:
       { "<id>": {"current": {...}, "history": {...}, "last_fetched": ..., ...} }
   • external_loader.load_external_series() автоматично ги picks-up
     щом catalog entry-то стане source="external"

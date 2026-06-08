@@ -599,63 +599,6 @@ def main_fetch_confboard(args) -> None:
 
 
 # ============================================================
-# FETCH-ZILLOW MODE
-# ============================================================
-
-def main_fetch_zillow(args) -> None:
-    """Download Zillow CSV(s) и кешира резултата.
-
-    CC0 licensed данни — свободно за republish.
-    Refresh: monthly cycle (cache TTL 20 дни).
-    """
-    from sources.zillow_adapter import ZillowAdapter
-    from catalog.series import SERIES_CATALOG
-
-    print("\n" + "═" * 60)
-    print("  📊  Fetch Zillow (CC0 public CSV)  —  econ_v2")
-    print("═" * 60)
-    print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
-    print("═" * 60 + "\n")
-
-    # Извличаме всички zillow specs от каталога
-    specs: list[dict] = []
-    for key, meta in SERIES_CATALOG.items():
-        if meta.get("source") != "external":
-            continue
-        if meta.get("cache_file") != "data/zillow_cache.json":
-            continue
-        url = meta.get("zillow_url")
-        region = meta.get("zillow_region_name")
-        if not url or not region:
-            print(f"  ⚠ {key}: липсва zillow_url или zillow_region_name — skip")
-            continue
-        specs.append({"key": key, "url": url, "region_name": region})
-
-    if not specs:
-        print("⚠ Няма Zillow серии в каталога. Добави entry с source=external, "
-              "cache_file=data/zillow_cache.json, zillow_url, zillow_region_name.")
-        return
-
-    adapter = ZillowAdapter(base_dir=BASE_DIR)
-    print(f"🌐 Download Zillow CSVs ({len(specs)} серии)...")
-    results = adapter.fetch_many(specs, force=args.refresh)
-
-    for spec in specs:
-        key = spec["key"]
-        history = results.get(key) or {}
-        if not history:
-            print(f"  ❌ {key}: 0 obs (fetch fail-на, виж logs)")
-            continue
-        dates = sorted(history.keys())
-        latest = dates[-1]
-        latest_val = history[latest]
-        print(f"  ✅ {key}: {latest_val:,.0f} ({latest}) — {len(history)} obs от {dates[0]}")
-
-    print(f"\n📦 Cache: {adapter.cache_path}")
-    print("\n✅ Done!\n")
-
-
-# ============================================================
 # FETCH-HOUSING-SCRAPERS MODE (NAHB, MBA, NAR)
 # ============================================================
 
@@ -792,13 +735,6 @@ def _parse_args():
              "Изисква FIRECRAWL_API_KEY в .env.",
     )
     mode.add_argument(
-        "--fetch-zillow",
-        dest="fetch_zillow",
-        action="store_true",
-        help="Download Zillow ZHVI и сродни public CSV-та (CC0 licensed). "
-             "Без API key. Cache TTL 20 дни. Refresh policy: monthly.",
-    )
-    mode.add_argument(
         "--fetch-housing-scrapers",
         dest="fetch_housing_scrapers",
         action="store_true",
@@ -886,8 +822,6 @@ if __name__ == "__main__":
         main_fetch_ism(args)
     elif args.fetch_confboard:
         main_fetch_confboard(args)
-    elif args.fetch_zillow:
-        main_fetch_zillow(args)
     elif args.fetch_housing_scrapers:
         main_fetch_housing_scrapers(args)
     elif args.import_bloomberg:
@@ -899,6 +833,6 @@ if __name__ == "__main__":
     else:
         print("❌ Не е избран режим. Избери един от: --briefing, --status, "
               "--refresh-only, --export-context, --fetch-ism, --fetch-confboard, "
-              "--fetch-zillow, --fetch-housing-scrapers, --import-bloomberg.")
+              "--fetch-housing-scrapers, --import-bloomberg.")
         print("   Пример: python run.py --briefing")
         sys.exit(2)

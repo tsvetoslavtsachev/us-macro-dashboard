@@ -90,8 +90,12 @@ CHART_SERIES = {
         "US_SOFR_OIS_3M", "US_SOFR_OIS_6M", "US_SOFR_OIS_1Y", "US_SOFR_OIS_2Y",
     ],
     "housing": [
+        # Цени (FRED, авто-обновявани): Case-Shiller National benchmark + FHFA (по-широк).
+        # ZHVI пенсиониран 2026-06-08 — дублира C-S (corr 0.957), изостава 2м, изглажда стреса.
+        # Виж docs/decisions/ZHVI-retirement-2026-06-08.md.
+        "CSUSHPISA", "USSTHPI",
         "PERMIT", "HOUST",
-        # Bloomberg bridge — sentiment/activity (ZHVI изключен: nishka 4, не се освежава)
+        # Bloomberg bridge — sentiment/activity
         "NAHB_HMI", "MBA_PURCHASE_IDX", "MBA_REFINANCE_IDX", "NAR_PHSI",
     ],
 }

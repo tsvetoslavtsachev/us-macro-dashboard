@@ -1139,34 +1139,6 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
 
     # ───────────────────────────────────────────────────────
-    # HOUSING / housing_prices — Zillow ZHVI (external, CC0)
-    # ───────────────────────────────────────────────────────
-    # Лиценз: Creative Commons CC0 1.0 (public domain).
-    # Свободно за republish в публични dashboards.
-    # Refresh: monthly, около 15-ти на месеца чрез --fetch-zillow.
-
-    "ZHVI_US_SFR_CONDO": {
-        "source": "external",
-        "id": "ZHVI_US_SFR_CONDO",
-        "cache_file": "data/zillow_cache.json",
-        "region": "US",
-        "name_bg": "Zillow Home Value Index — All Homes (SFR+Condo, SA, smoothed)",
-        "name_en": "Zillow ZHVI: All Homes (SFR+Condo), Tier 0.33-0.67, Smoothed Seasonally Adjusted",
-        "lens": ["housing"],
-        "peer_group": "housing_prices",
-        "tags": [],
-        "transform": "yoy_pct",
-        "historical_start": "2000-01-31",
-        "release_schedule": "monthly",
-        "typical_release": "day_15",
-        "revision_prone": False,
-        "narrative_hint": "Repeat-sales hedonic estimator от 110M+ имоти. По-широк от Case-Shiller (всички ZIP-ове, не само 20 metros).",
-        # Zillow adapter specific:
-        "zillow_url": "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv",
-        "zillow_region_name": "United States",
-    },
-
-    # ───────────────────────────────────────────────────────
     # GROWTH / business_sentiment + consumer_sentiment (Phase 2.5)
     # Секцията `surveys` разтворена в две по-фокусирани peer_groups.
     # Бележка: ISM PMI-ите (NAPMPMI/NAPMNMI) са изцяло покрити от VRM

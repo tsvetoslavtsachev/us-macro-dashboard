@@ -90,7 +90,6 @@ POLARITY: dict[str, Any] = {
     # се четяха като „по-високо=по-здраво" (грешно). Тук са изрично заковани.
     # HOUSING / housing_prices (ръст на цените = по-силен пазар)
     "CSUSHPISA": +1, "SPCS20RSA": +1, "USSTHPI": +1, "HPIPONM226S": +1,
-    "ZHVI_US_SFR_CONDO": +1,
     # HOUSING / housing_sales (повече сделки/договори = по-здраво)
     "HSN1F": +1, "EXHOSLUSM495S": +1, "NAR_PHSI": +1,
     # Inventory (yoy темп): U около собствената норма — и свръхбързо натрупване
