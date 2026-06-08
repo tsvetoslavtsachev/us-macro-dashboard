@@ -43,7 +43,7 @@ from catalog.series import (
     series_by_tag,
     series_by_peer_group,
 )
-from core.primitives import z_score, momentum, breadth_positive
+from core.primitives import apply_transform, robust_stats_latest, momentum, breadth_positive
 
 
 # ============================================================
@@ -51,6 +51,8 @@ from core.primitives import z_score, momentum, breadth_positive
 # ============================================================
 
 Z_THRESHOLD = 2.0                    # |z| > 2 → "екстремум"
+WINDOW_YEARS = 10                    # robust норма = последните 10 г. (огледало на scorer)
+MIN_OBS = 36                         # < 36 точки в прозореца → z недостъпен (NaN)
 PEER_UP_THRESHOLD = 0.6              # breadth > 0.6 → peer_group е "up"
 PEER_DOWN_THRESHOLD = 0.4            # breadth < 0.4 → peer_group е "down"
 MIN_PEER_SIZE_FOR_DEVIATION = 2      # под 2 остатъчни peer-а → не можем да кажем дали има deviation
@@ -69,7 +71,7 @@ class NonConsensusReading:
     tags: list[str]
     last_value: float
     last_date: Optional[str]
-    z_score: float                   # latest z (full sample)
+    z_score: float                   # robust dev_sigma на трансформираната серия (10г)
     momentum_1m: float               # последен период промяна
     peer_breadth: float              # breadth_positive на peer_group БЕЗ самата серия; NaN ако insufficient
     peer_direction: str              # "up" | "down" | "mixed" | "insufficient"
@@ -195,10 +197,20 @@ def _build_reading(
     last_value = float(clean.iloc[-1])
     last_date = clean.index[-1].strftime("%Y-%m-%d") if isinstance(clean.index[-1], pd.Timestamp) else None
 
-    z_series = z_score(series)
-    z_last = float(z_series.dropna().iloc[-1]) if not z_series.dropna().empty else float("nan")
+    # Robust dev_sigma върху ТРАНСФОРМИРАНАТА серия (каталожен transform) вместо
+    # сурова full-sample z — иначе номинално растящи серии (BUSLOANS, CPI_SHELTER)
+    # се четат вечно "екстремни". Огледало на unified scorer. momentum също на
+    # трансформираната серия (темп, не сурово ниво).
+    transform = entry.get("transform", "level")
+    transformed = apply_transform(series, transform)
+    stats = robust_stats_latest(transformed, window_years=WINDOW_YEARS, min_obs=MIN_OBS)
+    if stats is None:
+        z_last = float("nan")
+    else:
+        latest_t, med, scale = stats
+        z_last = 0.0 if (scale == 0 or np.isnan(scale)) else (latest_t - med) / scale
 
-    mom_series = momentum(series, periods=1)
+    mom_series = momentum(transformed, periods=1)
     mom_last = float(mom_series.dropna().iloc[-1]) if not mom_series.dropna().empty else float("nan")
 
     peer_breadth_val, peer_dir = _peer_breadth_excluding(

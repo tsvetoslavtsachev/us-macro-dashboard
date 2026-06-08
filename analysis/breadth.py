@@ -40,8 +40,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from catalog.series import series_by_lens, ALLOWED_LENSES
-from core.primitives import breadth_positive, breadth_extreme, z_score
+from catalog.series import series_by_lens, ALLOWED_LENSES, SERIES_CATALOG
+from core.primitives import breadth_positive, breadth_extreme, is_extreme_robust
 
 
 # ============================================================
@@ -173,9 +173,12 @@ def _compute_peer_group_breadth(
             missing_members=sorted(missing),
         )
 
+    transforms = {
+        k: SERIES_CATALOG.get(k, {}).get("transform", "level") for k in available
+    }
     bp = breadth_positive(available)
-    be = breadth_extreme(available, z_threshold=Z_EXTREME_THRESHOLD)
-    extremes = _identify_extreme_members(available, z_threshold=Z_EXTREME_THRESHOLD)
+    be = breadth_extreme(available, transforms, z_threshold=Z_EXTREME_THRESHOLD)
+    extremes = _identify_extreme_members(available, transforms, z_threshold=Z_EXTREME_THRESHOLD)
     direction = _classify_direction(bp)
 
     return PeerGroupBreadth(
@@ -192,18 +195,17 @@ def _compute_peer_group_breadth(
 
 def _identify_extreme_members(
     group: dict[str, pd.Series],
+    transforms: Optional[dict[str, str]] = None,
     z_threshold: float = 2.0,
 ) -> list[str]:
-    """Връща ключовете на серии с |z_score(latest)| > threshold."""
+    """Ключовете на серии с |robust dev_sigma| > threshold (transform-aware).
+
+    Каталожен transform + robust 10г z (огледало на breadth_extreme/scorer) вместо
+    сурова full-sample z — иначе монотонно растящо ниво е вечен фалшив екстремум."""
+    transforms = transforms or {}
     extremes: list[str] = []
     for k, s in group.items():
-        z = z_score(s)
-        if z.empty:
-            continue
-        z_last = z.iloc[-1]
-        if np.isnan(z_last):
-            continue
-        if abs(z_last) > z_threshold:
+        if is_extreme_robust(s, transforms.get(k, "level"), z_threshold):
             extremes.append(k)
     return extremes
 

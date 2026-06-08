@@ -20,7 +20,7 @@ from core.primitives import (
     z_score, percentile, momentum, acceleration,
     yoy_pct, mom_pct, rolling_mean, first_diff,
     breadth_positive, breadth_extreme, diffusion_index,
-    divergence, anomaly_scan, new_extreme,
+    divergence, anomaly_scan, new_extreme, is_extreme_robust,
 )
 
 
@@ -196,14 +196,39 @@ def test_breadth_positive_empty():
 # ============================================================
 
 def test_breadth_extreme_with_outlier():
-    # Една серия със силен outlier в края
+    # robust path иска ≥ min_obs (36) точки. Серия с вариация + краен outlier →
+    # extreme; константна серия → scale 0 → НЕ extreme (на нормата).
+    base = [1.0 + 0.2 * np.sin(i * 0.5) for i in range(40)]   # вариация → MAD > 0
     group = {
-        "a": make_monthly_series([1, 1, 1, 1, 1, 10]),  # outlier
-        "b": make_monthly_series([5, 5, 5, 5, 5, 5]),   # constant
+        "a": make_monthly_series(base + [10.0]),   # 41 обс, краен outlier
+        "b": make_monthly_series([5.0] * 41),      # константа → scale 0 → не extreme
     }
     result = breadth_extreme(group, z_threshold=2.0)
-    # a има extreme z, b е constant (z=0)
+    # a е extreme; b константа (scale 0 → не extreme)
     assert result == 0.5
+
+
+def test_breadth_extreme_short_series_insufficient():
+    # < min_obs точки → robust норма недостъпна → серията се skip-ва от valid → NaN.
+    group = {
+        "a": make_monthly_series([1, 1, 1, 1, 1, 10]),
+        "b": make_monthly_series([5, 5, 5, 5, 5, 5]),
+    }
+    assert np.isnan(breadth_extreme(group, z_threshold=2.0))
+
+
+def test_is_extreme_robust_monotonic_level_not_false_extreme():
+    """Регресия #5: монотонно растящо НИВО (PAYEMS-подобно, 30M→159M).
+
+    Сурова full-sample z го маркира вечно "екстремно"; каталожният yoy_pct transform
+    + robust 10г z го гасят (експоненциалният растеж има ~константна YoY)."""
+    idx = pd.date_range(end="2026-01-01", periods=360, freq="MS")  # 30 г.
+    level = pd.Series(np.geomspace(30_000, 159_000, 360), index=idx)  # експ. растеж
+
+    # Старо поведение: сурова full-sample z на нивото → фалшив екстремум.
+    assert abs(z_score(level).iloc[-1]) > 2.0
+    # Ново: yoy_pct + robust → НЕ extreme.
+    assert is_extreme_robust(level, "yoy_pct", z_threshold=2.0) is False
 
 
 # ============================================================

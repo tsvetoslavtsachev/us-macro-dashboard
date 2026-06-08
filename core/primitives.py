@@ -189,6 +189,31 @@ def robust_stats_latest(
     return float(s.iloc[-1]), med, scale
 
 
+def is_extreme_robust(
+    series: pd.Series,
+    transform: str = "level",
+    z_threshold: float = 2.0,
+    window_years: int = 10,
+    min_obs: int = 36,
+) -> Optional[bool]:
+    """True ако |robust dev_sigma| на ТРАНСФОРМИРАНАТА серия > праг.
+
+    Гаси дефект B (сурова full-sample z върху растящо ниво → вечен фалшив екстремум):
+    прилага каталожния transform (напр. yoy_pct) и мери последната точка спрямо
+    robust 10г норма (median ± 1.4826·MAD) — огледало на core.scorer/health.
+    `scale==0` (без вариация) → False (на нормата, като _dev_sigma в scorer).
+    None ако серията е по-къса от min_obs (недостатъчна норма → caller я skip-ва).
+    """
+    t = apply_transform(series, transform)
+    stats = robust_stats_latest(t, window_years=window_years, min_obs=min_obs)
+    if stats is None:
+        return None
+    latest, med, scale = stats
+    if scale == 0 or np.isnan(scale):
+        return False
+    return abs((latest - med) / scale) > z_threshold
+
+
 # ============================================================
 # MAGNITUDE / SEVERITY (легибилност на отклонението — item F)
 # ============================================================
@@ -253,22 +278,27 @@ def breadth_positive(
 
 def breadth_extreme(
     group: dict[str, pd.Series],
+    transforms: Optional[dict[str, str]] = None,
     z_threshold: float = 2.0,
+    min_obs: int = 36,
 ) -> float:
-    """Процент серии в група с |z_score(latest)| > threshold."""
+    """Процент серии в група с |robust dev_sigma| > threshold (transform-aware).
+
+    Огледало на unified scorer: каталожен transform + robust 10г z вместо сурова
+    full-sample z (която маркираше монотонно растящи нива — PAYEMS/USPRIV — като
+    вечни фалшиви екстремуми). `transforms`: {series_id → caталожен transform};
+    липсващ ключ → 'level'. Серия по-къса от min_obs се skip-ва от valid."""
     if not group:
         return float("nan")
+    transforms = transforms or {}
     extreme = 0
     valid = 0
-    for _, s in group.items():
-        z = z_score(s)
-        if z.empty:
-            continue
-        z_last = z.iloc[-1]
-        if np.isnan(z_last):
+    for key, s in group.items():
+        res = is_extreme_robust(s, transforms.get(key, "level"), z_threshold, min_obs=min_obs)
+        if res is None:
             continue
         valid += 1
-        if abs(z_last) > z_threshold:
+        if res:
             extreme += 1
     return extreme / valid if valid > 0 else float("nan")
 
