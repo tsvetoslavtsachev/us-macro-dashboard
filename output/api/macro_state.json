@@ -1,7 +1,7 @@
 {
   "region": "US",
   "as_of_date": "2026-06-08",
-  "generated_at": "2026-06-08T12:20:53.808464Z",
+  "generated_at": "2026-06-08T17:26:12.045857Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
@@ -398,55 +398,13 @@
       ]
     },
     "liquidity": {
-      "score": 51.1,
-      "health_z": 0.044,
+      "score": 51.0,
+      "health_z": 0.04,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
-        {
-          "lens": "liquidity",
-          "group_a": "credit_spreads",
-          "group_b": "financial_conditions",
-          "breadth_a": 0.0,
-          "breadth_b": 1.0,
-          "diff": -1.0,
-          "interpretation": "financial_conditions е по-силна (100%) отколкото credit_spreads (0%) — разминаване +100%.",
-          "name_bg": "credit_spreads vs financial_conditions",
-          "pair_id": "liquidity__credit_spreads__vs__financial_conditions",
-          "slot_a_label": "credit_spreads",
-          "slot_b_label": "financial_conditions",
-          "state": "a_down_b_up"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "credit_spreads",
-          "group_b": "money_supply",
-          "breadth_a": 0.0,
-          "breadth_b": 1.0,
-          "diff": -1.0,
-          "interpretation": "money_supply е по-силна (100%) отколкото credit_spreads (0%) — разминаване +100%.",
-          "name_bg": "credit_spreads vs money_supply",
-          "pair_id": "liquidity__credit_spreads__vs__money_supply",
-          "slot_a_label": "credit_spreads",
-          "slot_b_label": "money_supply",
-          "state": "a_down_b_up"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "credit_spreads",
-          "group_b": "policy_rates",
-          "breadth_a": 0.0,
-          "breadth_b": 0.833,
-          "diff": -0.833,
-          "interpretation": "policy_rates е по-силна (83%) отколкото credit_spreads (0%) — разминаване +83%.",
-          "name_bg": "credit_spreads vs policy_rates",
-          "pair_id": "liquidity__credit_spreads__vs__policy_rates",
-          "slot_a_label": "credit_spreads",
-          "slot_b_label": "policy_rates",
-          "state": "a_down_b_up"
-        },
         {
           "lens": "liquidity",
           "group_a": "financial_conditions",
@@ -492,20 +450,6 @@
         {
           "lens": "liquidity",
           "group_a": "banking_credit",
-          "group_b": "credit_spreads",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "banking_credit е по-силна (50%) отколкото credit_spreads (0%) — разминаване +50%.",
-          "name_bg": "banking_credit vs credit_spreads",
-          "pair_id": "liquidity__banking_credit__vs__credit_spreads",
-          "slot_a_label": "banking_credit",
-          "slot_b_label": "credit_spreads",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "liquidity",
-          "group_a": "banking_credit",
           "group_b": "financial_conditions",
           "breadth_a": 0.5,
           "breadth_b": 1.0,
@@ -528,6 +472,34 @@
           "name_bg": "banking_credit vs money_supply",
           "pair_id": "liquidity__banking_credit__vs__money_supply",
           "slot_a_label": "banking_credit",
+          "slot_b_label": "money_supply",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "liquidity",
+          "group_a": "credit_spreads",
+          "group_b": "financial_conditions",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "financial_conditions е по-силна (100%) отколкото credit_spreads (50%) — разминаване +50%.",
+          "name_bg": "credit_spreads vs financial_conditions",
+          "pair_id": "liquidity__credit_spreads__vs__financial_conditions",
+          "slot_a_label": "credit_spreads",
+          "slot_b_label": "financial_conditions",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "liquidity",
+          "group_a": "credit_spreads",
+          "group_b": "money_supply",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "money_supply е по-силна (100%) отколкото credit_spreads (50%) — разминаване +50%.",
+          "name_bg": "credit_spreads vs money_supply",
+          "pair_id": "liquidity__credit_spreads__vs__money_supply",
+          "slot_a_label": "credit_spreads",
           "slot_b_label": "money_supply",
           "state": "a_down_b_up"
         }
@@ -725,11 +697,11 @@
       "pair_id": "credit_policy_transmission",
       "name_bg": "Credit spreads × Policy rates",
       "question_bg": "Дали credit следва policy направление — transmission intact?",
-      "state": "a_down_b_up",
-      "interpretation": "Benign credit despite tightening — liquidity cushion intact.",
+      "state": "transition",
+      "interpretation": "Mixed transmission.",
       "slot_a_label": "Credit stress",
       "slot_b_label": "Policy tightening",
-      "breadth_a": 0.0,
+      "breadth_a": 0.5,
       "breadth_b": 0.833
     },
     {
