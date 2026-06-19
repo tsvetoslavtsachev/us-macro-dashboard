@@ -3,10 +3,10 @@
     "indicator": "cb_lei",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/us-leading-indicators",
-      "last_fetched": "2026-06-12T17:56:06.694843",
-      "month": "April 2026",
-      "headline": 97.4,
-      "mom_change": 0.7,
+      "last_fetched": "2026-06-19T17:45:11.183620",
+      "month": "May 2026",
+      "headline": 99.3,
+      "mom_change": 0.2,
       "subcomponents": {},
       "parse_quality": "ok",
       "missing_subcomponents": []
@@ -819,7 +819,8 @@
       "1959-03-01": 22.8,
       "1959-02-01": 22.5,
       "1959-01-01": 22.2,
-      "2026-04-01": 97.4
+      "2026-04-01": 97.4,
+      "2026-05-01": 99.3
     },
     "history_source": "bloomberg_csv",
     "history_imported": "2026-05-19T23:21:38.334868"
@@ -828,7 +829,7 @@
     "indicator": "cb_cci",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/consumer-confidence",
-      "last_fetched": "2026-06-12T17:56:06.972499",
+      "last_fetched": "2026-06-19T17:45:11.639428",
       "month": "May 2026",
       "headline": 93.1,
       "mom_change": 1.0,
