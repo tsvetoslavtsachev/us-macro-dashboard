@@ -295,6 +295,21 @@ def main_briefing(args) -> str:
     explorer_dated = output_dir / f"explorer_{today.isoformat()}.html"
     state_dir = BASE_DIR / "data" / "state"
 
+    # ─── Treasury Funding Radar (health-aware HTTP; никога не чупи briefing-а) ─
+    print("🛰️  Тегля Treasury Funding Radar (funding_state)...")
+    try:
+        from sources.funding_radar_adapter import load_funding_state
+        funding_view = load_funding_state(BASE_DIR, today=today, refresh=True)
+        if funding_view.get("available"):
+            st = funding_view.get("state") or {}
+            print(f"  ✅ composite {st.get('composite_score')} · "
+                  f"{st.get('verdict')} · {funding_view.get('health_note')}")
+        else:
+            print(f"  ⚠ недостъпен: {funding_view.get('health_note')}")
+    except Exception as e:
+        print(f"  ⚠ funding radar пропуснат ({e})")
+        funding_view = None
+
     # ─── Briefing (deep) ──────────────────────────────────────────
     print("📰 Генерирам Weekly Briefing (deep)...")
     generate_weekly_briefing(
@@ -305,6 +320,7 @@ def main_briefing(args) -> str:
         persist_state=True,
         analog_bundle=analog_bundle,
         journal_entries=journal_entries,
+        funding_state=funding_view,
     )
     print(f"  ✅ {briefing_path.name} ({briefing_path.stat().st_size // 1024} KB)")
 
@@ -422,6 +438,7 @@ def main_export_context(args) -> str:
     from analysis.divergence import compute_cross_lens_divergence
     from analysis.anomaly import compute_anomalies
     from export.briefing_context import generate_briefing_context
+    from sources.funding_radar_adapter import load_funding_state
 
     today = date_cls.today()
 
@@ -481,6 +498,21 @@ def main_export_context(args) -> str:
     cross_report = compute_cross_lens_divergence(snapshot)
     anomaly_report = compute_anomalies(snapshot, z_threshold=2.0, top_n=10, lookback_years=5)
 
+    # Treasury Funding Radar — health-aware HTTP fetch на публикувания funding_state.
+    # Никога не чупи pipeline-а: fetch fail / dead source → честен degraded view.
+    print("🛰️  Тегля Treasury Funding Radar (funding_state)...")
+    try:
+        funding_view = load_funding_state(BASE_DIR, today=today, refresh=True)
+        if funding_view.get("available"):
+            st = funding_view.get("state") or {}
+            print(f"  ✅ composite {st.get('composite_score')} · "
+                  f"{st.get('verdict')} · {funding_view.get('health_note')}")
+        else:
+            print(f"  ⚠ недостъпен: {funding_view.get('health_note')}")
+    except Exception as e:  # defensive — адаптерът не бива да вдига, но пазим pipeline-а
+        print(f"  ⚠ funding radar пропуснат ({e})")
+        funding_view = None
+
     # Generate markdown
     output_dir = BASE_DIR / OUTPUT_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -492,6 +524,7 @@ def main_export_context(args) -> str:
         anomaly_report=anomaly_report,
         today=today,
         output_path=output_dir,
+        funding_state=funding_view,
     )
     size_kb = Path(md_path).stat().st_size / 1024
     print(f"  ✅ {Path(md_path).name} ({size_kb:.1f} KB)")

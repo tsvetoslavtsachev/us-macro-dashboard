@@ -58,6 +58,11 @@ from analysis.guardrails import (
     SEVERITY_RED,
     SEVERITY_AMBER,
 )
+from sources.funding_radar_adapter import (
+    FUNDING_LAMP_LABELS,
+    FUNDING_LAMP_COLOR_HEX,
+    worst_lamp_color,
+)
 from analysis.analog_pipeline import AnalogBundle
 from analysis.analog_matcher import classify_strength, STRENGTH_LABELS_BG
 from analysis.macro_vector import DIM_LABELS_BG, DIM_UNITS, STATE_VECTOR_DIMS
@@ -106,6 +111,7 @@ def generate_weekly_briefing(
     persist_state: bool = True,
     analog_bundle: Optional[AnalogBundle] = None,
     journal_entries: Optional[list[Any]] = None,
+    funding_state: Optional[dict] = None,
 ) -> str:
     """Генерира HTML briefing от snapshot; връща абсолютния path.
 
@@ -178,6 +184,8 @@ def generate_weekly_briefing(
     sections.append(_render_executive(exec_snapshot, falsifiers, threshold_flags))
     sections.append(_render_delta(delta))
     sections.append(_render_cross_lens(cross_report))
+    if funding_state is not None:
+        sections.append(_render_funding_card(funding_state, today))
     if analog_bundle is not None:
         sections.append(_render_analogs(analog_bundle))
     for lens in LENS_ORDER:
@@ -510,6 +518,88 @@ def _render_cross_lens(cross_report) -> str:
   <div class="pair-wrap">
     {"".join(pair_rows)}
   </div>
+</section>
+"""
+
+
+def _render_funding_card(funding_view: Optional[dict], today: date) -> str:
+    """Визуална карта «Стабилност на финансирането» (Treasury Funding Radar).
+
+    Готов composite + verdict + per-lamp светофар от публикувания JSON —
+    НЕ се преизчислява. Headline цветът идва от най-тежката лампа на радара,
+    не от изобретен числов праг. Stale / dead / fetch fail → честно, не 0.
+    """
+    radar_url = "https://tsvetoslavtsachev.github.io/treasury-funding-radar/"
+
+    if not funding_view or not funding_view.get("available"):
+        reason = html.escape(str((funding_view or {}).get("health_note", "недостъпен")))
+        return f"""
+<section class="brief-section">
+  <h2>Стабилност на финансирането</h2>
+  <p class="muted">⚠ Treasury Funding Radar е недостъпен ({reason}) — показваме честно, <strong>не 0</strong>.</p>
+</section>
+"""
+
+    state = funding_view.get("state") or {}
+    score = state.get("composite_score")
+    verdict = html.escape(str(state.get("verdict", "—")))
+    lamps = state.get("lamp_status") or {}
+    score_str = f"{score:.1f}" if isinstance(score, (int, float)) else "—"
+    headline_hex = FUNDING_LAMP_COLOR_HEX.get(worst_lamp_color(lamps), "#8b949e")
+
+    flags = []
+    if funding_view.get("source") == "cache":
+        flags.append("кеширан (fetch fail)")
+    if funding_view.get("stale"):
+        flags.append(f"остарял ({funding_view.get('age_days')}д)")
+    if funding_view.get("any_dead_source"):
+        flags.append("мъртъв източник в радара")
+    banner = ""
+    if flags:
+        banner = (
+            '<div class="pair-interp" style="border-left-color:#d29922;color:#d29922;">'
+            f'⚠ {html.escape(" · ".join(flags))}</div>'
+        )
+
+    lamp_rows = []
+    for k in ("1", "2", "3", "4", "5"):
+        color = str(lamps.get(k, "")).lower()
+        hexc = FUNDING_LAMP_COLOR_HEX.get(color, "#8b949e")
+        name = html.escape(FUNDING_LAMP_LABELS.get(k, f"Лампа {k}"))
+        dot = (f'<span style="display:inline-block;width:10px;height:10px;'
+               f'border-radius:50%;background:{hexc};margin-right:7px;"></span>')
+        lamp_rows.append(
+            f'<tr><td class="num">{k}</td><td class="pg-name">{dot}{name}</td>'
+            f'<td style="color:{hexc};font-weight:600;">{html.escape(color or "—")}</td></tr>'
+        )
+
+    as_of = html.escape(str(funding_view.get("as_of", "—")))
+    source = html.escape(str(funding_view.get("source", "—")))
+    return f"""
+<section class="brief-section">
+  <h2>Стабилност на финансирането</h2>
+  <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+    <div class="score-circle" style="border-color:{headline_hex};">
+      <span class="score-num" style="color:{headline_hex};">{score_str}</span>
+      <span class="score-label">/ 10</span>
+    </div>
+    <div style="flex:1;min-width:240px;">
+      <div style="font-size:15px;font-weight:600;color:#f0f6fc;">{verdict}</div>
+      <div class="muted" style="margin-top:4px;">
+        Leading сетиво за стрес в доларовия водопровод (репо · резерви · SOFR · аукциони · ливъридж) —
+        пали ПРЕДИ ценовия Kill Switch. Числата идват готови от
+        <a href="{radar_url}" style="color:#58a6ff;">standalone радара</a> и не се преизчисляват тук.
+      </div>
+    </div>
+  </div>
+  {banner}
+  <table class="breadth-table">
+    <thead><tr><th>#</th><th>Лампа</th><th>Статус</th></tr></thead>
+    <tbody>
+      {"".join(lamp_rows)}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:11.5px;">Източник: Treasury Funding Radar · as_of {as_of} · данни: {source}</p>
 </section>
 """
 

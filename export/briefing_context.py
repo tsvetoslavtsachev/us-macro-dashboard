@@ -43,6 +43,10 @@ from core.display import (
 )
 from core.primitives import _infer_yoy_periods
 from analysis.health import lens_health
+from sources.funding_radar_adapter import (
+    FUNDING_LAMP_LABELS,
+    FUNDING_LAMP_COLOR_BG,
+)
 
 
 # ============================================================
@@ -129,6 +133,7 @@ def generate_briefing_context(
     today: date,
     output_path: str | Path,
     history_years: int = HISTORY_YEARS,
+    funding_state: Optional[dict] = None,
 ) -> str:
     """Генерира Markdown context файл с пълен analytical state.
 
@@ -140,6 +145,8 @@ def generate_briefing_context(
         today: дата за file name + header.
         output_path: директория за изход.
         history_years: window за percentile/range (default 5).
+        funding_state: health-aware view от sources.funding_radar_adapter
+            (Treasury Funding Radar). None → секцията се пропуска тихо.
 
     Returns:
         Абсолютен path към записания .md файл.
@@ -148,6 +155,8 @@ def generate_briefing_context(
     sections.append(_render_header(today, lens_reports, cross_report, anomaly_report))
     sections.append(_render_executive_summary(lens_reports, anomaly_report, snapshot))
     sections.append(_render_cross_spreads(snapshot, today, history_years))
+    if funding_state is not None:
+        sections.append(_render_funding_radar(funding_state, today))
     sections.append(_render_themes(lens_reports, snapshot, history_years))
     sections.append(_render_cross_lens(cross_report, snapshot))
     sections.append(_render_anomalies(anomaly_report, snapshot, today, history_years))
@@ -345,6 +354,67 @@ def _staleness_marker(level: str) -> str:
 # ============================================================
 # SECTION RENDERERS
 # ============================================================
+
+def _render_funding_radar(funding_view: Optional[dict], today: date) -> str:
+    """Секция «Стабилност на финансирането» от Treasury Funding Radar.
+
+    Чете готов composite + verdict + per-lamp статус от health-aware view-то
+    (sources.funding_radar_adapter). НЕ преизчислява нищо. Stale / dead source /
+    fetch fail → честен ред, никога 0.
+    """
+    parts = ["## 1.6 Стабилност на финансирането (Treasury Funding Radar)", ""]
+    parts.append(
+        "Leading сетиво за стрес в доларовия водопровод (репо · резерви · SOFR · "
+        "аукциони · ливъридж) — пали ПРЕДИ ценовия Kill Switch. Числата идват "
+        "готови от standalone радара "
+        "([публикуван JSON](https://tsvetoslavtsachev.github.io/treasury-funding-radar/)) "
+        "и **не се преизчисляват тук**."
+    )
+    parts.append("")
+
+    if not funding_view or not funding_view.get("available"):
+        reason = (funding_view or {}).get("health_note", "недостъпен")
+        parts.append(
+            f"_⚠ Радарът е недостъпен ({reason}) — показвам честно, **не 0**._"
+        )
+        return "\n".join(parts)
+
+    state = funding_view.get("state") or {}
+    score = state.get("composite_score")
+    verdict = state.get("verdict", "—")
+    score_str = f"{score:.1f} / 10" if isinstance(score, (int, float)) else "—"
+
+    flags: list[str] = []
+    if funding_view.get("source") == "cache":
+        flags.append("⚠ кеширан (fetch fail)")
+    if funding_view.get("stale"):
+        flags.append(f"⚠ остарял ({funding_view.get('age_days')}д)")
+    if funding_view.get("any_dead_source"):
+        flags.append("⚠ мъртъв източник в радара")
+    health_str = " · ".join(flags) if flags else "свеж"
+
+    parts.append("| Композит | Присъда | Здраве на данните |")
+    parts.append("|---|---|---|")
+    parts.append(f"| **{score_str}** | {verdict} | {health_str} |")
+    parts.append("")
+
+    parts.append("**Разбивка по лампи** (цвят от радара):")
+    parts.append("")
+    parts.append("| # | Лампа | Статус |")
+    parts.append("|---|---|---|")
+    lamps = state.get("lamp_status") or {}
+    for k in ("1", "2", "3", "4", "5"):
+        color = str(lamps.get(k, "")).lower()
+        emoji, label_bg = FUNDING_LAMP_COLOR_BG.get(color, ("⚪", color or "—"))
+        name = FUNDING_LAMP_LABELS.get(k, f"Лампа {k}")
+        parts.append(f"| {k} | {name} | {emoji} {label_bg} |")
+    parts.append("")
+    parts.append(
+        f"_Източник: Treasury Funding Radar · as_of {funding_view.get('as_of', '—')} "
+        f"· данни: {funding_view.get('source', '—')}._"
+    )
+    return "\n".join(parts)
+
 
 def _render_header(today, lens_reports, cross_report, anomaly_report) -> str:
     lines = [

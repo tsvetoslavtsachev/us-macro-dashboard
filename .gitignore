@@ -12,6 +12,7 @@ data/cache.json.bak
 data/*.bak
 data/fred_cache.json
 data/fred_cache.json.bak
+data/funding_state_cache.json
 data/ism_debug/
 data/confboard_debug/
 data/state/briefing_*.json
