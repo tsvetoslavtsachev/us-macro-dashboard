@@ -3,7 +3,7 @@
     "indicator": "cb_lei",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/us-leading-indicators",
-      "last_fetched": "2026-06-19T17:45:11.183620",
+      "last_fetched": "2026-06-26T17:26:46.980590",
       "month": "May 2026",
       "headline": 99.3,
       "mom_change": 0.2,
@@ -829,7 +829,7 @@
     "indicator": "cb_cci",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/consumer-confidence",
-      "last_fetched": "2026-06-19T17:45:11.639428",
+      "last_fetched": "2026-06-26T17:26:47.395194",
       "month": "May 2026",
       "headline": 93.1,
       "mom_change": 1.0,

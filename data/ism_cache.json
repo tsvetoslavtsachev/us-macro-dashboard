@@ -3,7 +3,7 @@
     "indicator": "manufacturing_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/may/",
-      "last_fetched": "2026-06-12T17:55:56.223295",
+      "last_fetched": "2026-06-26T17:26:40.560508",
       "month": "May 2026",
       "headline": 54.0,
       "subindices": {
@@ -14,9 +14,9 @@
         "Imports": 53.0,
         "Supplier Deliveries": 60.6,
         "Prices": 82.1,
+        "New Export Orders": 50.6,
         "Production": 54.3,
-        "New Orders": 56.8,
-        "New Export Orders": 50.6
+        "New Orders": 56.8
       },
       "parse_quality": "ok",
       "missing_subindices": []
@@ -967,7 +967,7 @@
     "indicator": "services_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/may/",
-      "last_fetched": "2026-06-12T17:56:02.542173",
+      "last_fetched": "2026-06-26T17:26:46.194446",
       "month": "May 2026",
       "headline": 54.5,
       "subindices": {
