@@ -265,27 +265,30 @@ def _check_claims_spike(snapshot: dict[str, pd.Series]) -> Optional[ThresholdFla
     val = float(clean.iloc[-1])
     last_date = _iso_date(clean.index[-1])
 
-    # ICSA е в хиляди
-    if val >= 300:
+    # ICSA идва суров от FRED (напр. 226000.0), праговете 300/275 са в хиляди —
+    # конвертираме преди сравнение (P3-fix-A(0.3): fixes false perpetual red flag).
+    val_k = val / 1000.0
+
+    if val_k >= 300:
         return ThresholdFlag(
             key="claims_spike_red",
             label_bg="Initial jobless claims",
             series_key="ICSA",
-            value=round(val, 0),
+            value=round(val_k, 0),
             threshold=300,
             severity=SEVERITY_RED,
-            message_bg=f"Initial claims са {val:.0f}K — stressed level (> 300K).",
+            message_bg=f"Initial claims са {val_k:.0f}K — stressed level (> 300K).",
             last_date=last_date,
         )
-    if val >= 275:
+    if val_k >= 275:
         return ThresholdFlag(
             key="claims_spike_amber",
             label_bg="Initial jobless claims",
             series_key="ICSA",
-            value=round(val, 0),
+            value=round(val_k, 0),
             threshold=275,
             severity=SEVERITY_AMBER,
-            message_bg=f"Initial claims са {val:.0f}K — над watch threshold (275K).",
+            message_bg=f"Initial claims са {val_k:.0f}K — над watch threshold (275K).",
             last_date=last_date,
         )
     return None

@@ -176,7 +176,9 @@ def test_sahm_rule_insufficient_history_skipped():
 # ============================================================
 
 def test_claims_above_300k_is_red():
-    snap = {"ICSA": weekly([220, 240, 310])}
+    # P3-fix-A(0.3): ICSA идва суров от FRED — stub стойностите тук са х1000
+    # (220К/240К/310К), не "220" директно, за да отразяват реалния input формат.
+    snap = {"ICSA": weekly([220000, 240000, 310000])}
     flags = compute_threshold_flags(snap)
     c = [f for f in flags if f.key.startswith("claims")]
     assert len(c) == 1
@@ -184,7 +186,7 @@ def test_claims_above_300k_is_red():
 
 
 def test_claims_between_275_and_300_is_amber():
-    snap = {"ICSA": weekly([220, 240, 280])}
+    snap = {"ICSA": weekly([220000, 240000, 280000])}
     flags = compute_threshold_flags(snap)
     c = [f for f in flags if f.key.startswith("claims")]
     assert len(c) == 1
@@ -192,9 +194,42 @@ def test_claims_between_275_and_300_is_amber():
 
 
 def test_claims_normal_no_flag():
-    snap = {"ICSA": weekly([200, 220, 240])}
+    snap = {"ICSA": weekly([200000, 220000, 240000])}
     flags = compute_threshold_flags(snap)
     assert not any(f.key.startswith("claims") for f in flags)
+
+
+# ─── P3-fix-A(0.3): ICSA units bug — raw FRED count, не "в хиляди" ───
+# Verified production value: ICSA 2026-06-13 = 226000.0 (output/api/series_data.json).
+# compute_threshold_flags получава суровия snapshot (без /1000 конверсия),
+# затова тестовете тук подават суров брой (226000, 320000, 280000), не stub "хиляди".
+
+def test_claims_raw_226000_is_normal_no_flag():
+    """Суров ICSA=226000 (production 2026-06-13 стойност) е НОРМАЛНО ниво (226K), не red flag."""
+    snap = {"ICSA": weekly([210000, 218000, 226000])}
+    flags = compute_threshold_flags(snap)
+    c = [f for f in flags if f.key.startswith("claims")]
+    assert c == []
+
+
+def test_claims_raw_320000_is_red_with_320k_message():
+    """Суров ICSA=320000 → red flag, value≈320 (в хиляди), съобщение съдържа '320K'."""
+    snap = {"ICSA": weekly([300000, 310000, 320000])}
+    flags = compute_threshold_flags(snap)
+    c = [f for f in flags if f.key.startswith("claims")]
+    assert len(c) == 1
+    assert c[0].severity == SEVERITY_RED
+    assert c[0].value == pytest.approx(320, abs=1)
+    assert "320K" in c[0].message_bg
+
+
+def test_claims_raw_280000_is_amber():
+    """Суров ICSA=280000 → amber flag (между 275K и 300K)."""
+    snap = {"ICSA": weekly([260000, 270000, 280000])}
+    flags = compute_threshold_flags(snap)
+    c = [f for f in flags if f.key.startswith("claims")]
+    assert len(c) == 1
+    assert c[0].severity == SEVERITY_AMBER
 
 
 # ============================================================
@@ -227,7 +262,7 @@ def test_all_thresholds_activate_together():
         "YC_10Y2Y": weekly([-0.3]),
         "HY_OAS": weekly([8.0]),
         "UNRATE": monthly([3.5]*9 + [4.2, 4.3, 4.4]),
-        "ICSA": weekly([320]),
+        "ICSA": weekly([320000]),  # P3-fix-A(0.3): суров ICSA формат
     }
     flags = compute_threshold_flags(snap)
     keys = {f.key for f in flags}
