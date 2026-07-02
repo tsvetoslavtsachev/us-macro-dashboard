@@ -65,6 +65,29 @@ def flat(n: int = 60, level: float = 3.0) -> pd.Series:
     return monthly(vals)
 
 
+def accel_up(n: int = 60, base: float = 100.0) -> pd.Series:
+    """Индекс с УСКОРЯВАЩ се темп — YoY расте всеки месец.
+
+    Transform-aware breadth (REVIEW-03 т.0.1) чете това като "up" за yoy_pct
+    серии; суровият momentum също е "up" (нивото расте).
+    """
+    rates = np.linspace(0.001, 0.02, n)
+    vals = base * np.cumprod(1 + rates)
+    return monthly(list(vals))
+
+
+def decel_up(n: int = 60, base: float = 100.0) -> pd.Series:
+    """Индекс, който РАСТЕ, но със забавящ се темп — YoY пада всеки месец.
+
+    Точно случаят от REVIEW-03 B1: суровият momentum казва "up" (индексът расте),
+    а transform-aware breadth казва "down" (инфлацията охлажда). Разделя двете
+    семантики в тестовете.
+    """
+    rates = np.linspace(0.02, 0.001, n)
+    vals = base * np.cumprod(1 + rates)
+    return monthly(list(vals))
+
+
 def _lens_snapshot(lens: str, factory) -> dict[str, pd.Series]:
     return {e["_key"]: factory() for e in series_by_lens(lens)}
 
@@ -180,50 +203,51 @@ class TestCrossLensDivergence:
 
         Ако unemployment серии trend DOWN (безработицата пада → labor tighter),
         breadth_positive на unemployment = 0.0. След invert → 1.0.
-        Aggregate с wage_dynamics (also trend up) → очакваме slot_a около 1.0.
+        Aggregate с wage_dynamics (УСКОРЯВАЩИ се — yoy_pct transform) → slot_a ≈ 1.0.
         """
-        # Labor: unemployment trend down (tight), wage_dynamics trend up
+        # Labor: unemployment trend down (tight), wage_dynamics ускоряват
         snap: dict = {}
         for e in series_by_lens("labor"):
             if e["peer_group"] == "unemployment":
                 snap[e["_key"]] = trend_down()  # низка unemployment → labor tight
             elif e["peer_group"] == "wage_dynamics":
-                snap[e["_key"]] = trend_up()    # wages растат
+                snap[e["_key"]] = accel_up()    # заплатите ускоряват (yoy расте)
             else:
                 snap[e["_key"]] = flat()
 
-        # Inflation: trend up (hot)
+        # Inflation: ускорява (hot)
         for e in series_by_lens("inflation"):
             if e["_key"] not in snap:
-                snap[e["_key"]] = trend_up()
+                snap[e["_key"]] = accel_up()
 
         # Намираме stagflation_test pair
         stag = next(p for p in CROSS_LENS_PAIRS if p["id"] == "stagflation_test")
-        breadth_a, _, _ = _aggregate_slot_breadth(stag["slot_a"], snap)
-        breadth_b, _, _ = _aggregate_slot_breadth(stag["slot_b"], snap)
+        breadth_a, raw_a, _, _ = _aggregate_slot_breadth(stag["slot_a"], snap)
+        breadth_b, raw_b, _, _ = _aggregate_slot_breadth(stag["slot_b"], snap)
 
         # slot_a: unemployment (invert) + wage_dynamics → и двете "up" след invert
         assert breadth_a == pytest.approx(1.0), (
             f"slot_a (labor tightness) очаквахме 1.0, получихме {breadth_a}"
         )
-        # slot_b: inflation up → 1.0
+        # slot_b: inflation ускорява → 1.0; суровият shadow също (индексите растат)
         assert breadth_b == pytest.approx(1.0)
+        assert raw_b == pytest.approx(1.0)
 
     def test_stagflation_interpretation_both_up(self):
-        """Labor tight + inflation hot → state=both_up → stagflation interpretation."""
+        """Labor tight + inflation УСКОРЯВА → state=both_up → stagflation interpretation."""
         snap: dict = {}
-        # Labor tight: unemployment trend_down, wage_dynamics trend_up
+        # Labor tight: unemployment trend_down, wage_dynamics ускоряват
         for e in series_by_lens("labor"):
             if e["peer_group"] == "unemployment":
                 snap[e["_key"]] = trend_down()
             elif e["peer_group"] == "wage_dynamics":
-                snap[e["_key"]] = trend_up()
+                snap[e["_key"]] = accel_up()
             else:
                 snap[e["_key"]] = flat()
-        # Inflation hot
+        # Inflation hot: темпът расте, не само нивото
         for e in series_by_lens("inflation"):
             if e["_key"] not in snap:
-                snap[e["_key"]] = trend_up()
+                snap[e["_key"]] = accel_up()
 
         report = compute_cross_lens_divergence(snap)
         stag_reading = next(p for p in report.pairs if p.pair_id == "stagflation_test")
@@ -232,23 +256,31 @@ class TestCrossLensDivergence:
                "stagflation" in stag_reading.interpretation.lower()
 
     def test_soft_landing_interpretation(self):
-        """Labor tight, inflation cooling → state=a_up_b_down → soft landing."""
+        """Labor tight, inflation cooling → state=a_up_b_down → soft landing.
+
+        КЛЮЧОВИЯТ случай от REVIEW-03 B1: индексите РАСТАТ (суровият legacy
+        breadth казва both_up = стагфлация), но темпът ПАДА — transform-aware
+        state-ът правилно чете охлаждане. Пинваме и двете, за да е видим
+        семантичният разрив през прехода.
+        """
         snap: dict = {}
         for e in series_by_lens("labor"):
             if e["peer_group"] == "unemployment":
                 snap[e["_key"]] = trend_down()  # tight
             elif e["peer_group"] == "wage_dynamics":
-                snap[e["_key"]] = trend_up()
+                snap[e["_key"]] = accel_up()
             else:
                 snap[e["_key"]] = flat()
         for e in series_by_lens("inflation"):
             if e["_key"] not in snap:
-                snap[e["_key"]] = trend_down()  # cooling
+                snap[e["_key"]] = decel_up()  # расте, но охлажда (yoy пада)
 
         report = compute_cross_lens_divergence(snap)
         stag = next(p for p in report.pairs if p.pair_id == "stagflation_test")
         assert stag.state == "a_up_b_down"
         assert "oft landing" in stag.interpretation
+        # Суровият shadow щеше да каже стагфлация — точно дефектът от REVIEW-03 B1
+        assert stag.state_raw == "both_up"
 
 
 # ============================================================
@@ -315,6 +347,12 @@ class TestJSONSafety:
         for p in d["pairs"]:
             assert p["breadth_a"] is None or isinstance(p["breadth_a"], (int, float))
             assert p["breadth_b"] is None or isinstance(p["breadth_b"], (int, float))
+            assert p["breadth_a_raw"] is None or isinstance(p["breadth_a_raw"], (int, float))
+            assert p["breadth_b_raw"] is None or isinstance(p["breadth_b_raw"], (int, float))
+            assert p["state_raw"] in {
+                "both_up", "both_down", "a_up_b_down", "a_down_b_up",
+                "transition", "insufficient_data",
+            }
 
     def test_intra_report_to_dict_structure(self):
         report = compute_intra_lens_divergence("labor", _lens_snapshot("labor", trend_up))

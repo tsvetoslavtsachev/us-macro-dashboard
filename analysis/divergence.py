@@ -27,9 +27,9 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from catalog.series import series_by_lens, ALLOWED_LENSES
+from catalog.series import series_by_lens, ALLOWED_LENSES, SERIES_CATALOG
 from catalog.cross_lens_pairs import CROSS_LENS_PAIRS
-from core.primitives import breadth_positive
+from core.primitives import breadth_positive, apply_transform
 
 
 # ============================================================
@@ -85,16 +85,22 @@ class CrossLensPairReading:
     question_bg: str
     slot_a_label: str
     slot_b_label: str
-    breadth_a: float                 # aggregate 0..1 (invert-applied)
+    breadth_a: float                 # aggregate 0..1 (invert-applied, каталожен transform — REVIEW-03 т.0.1)
     breadth_b: float
     n_a_available: int               # union на налични серии в slot_a
     n_b_available: int
     state: str                       # both_up | both_down | a_up_b_down | a_down_b_up | transition | insufficient_data
     interpretation: str
+    # Shadow полета (base-first преход, REVIEW-03 т.0.1): legacy суровият breadth
+    # остава за сверка ≥1 публикационен цикъл, после се маха. Defaults в края,
+    # за да не чупят съществуващи конструктори.
+    breadth_a_raw: float = float("nan")
+    breadth_b_raw: float = float("nan")
+    state_raw: str = "insufficient_data"
 
     def to_dict(self) -> dict:
         d = asdict(self)
-        for k in ("breadth_a", "breadth_b"):
+        for k in ("breadth_a", "breadth_b", "breadth_a_raw", "breadth_b_raw"):
             if isinstance(d[k], float) and np.isnan(d[k]):
                 d[k] = None
         return d
@@ -191,12 +197,13 @@ def compute_cross_lens_divergence(
     all_relevant_keys: list[str] = []
 
     for pair in pairs:
-        breadth_a, n_a, keys_a = _aggregate_slot_breadth(pair["slot_a"], snapshot)
-        breadth_b, n_b, keys_b = _aggregate_slot_breadth(pair["slot_b"], snapshot)
+        breadth_a, raw_a, n_a, keys_a = _aggregate_slot_breadth(pair["slot_a"], snapshot)
+        breadth_b, raw_b, n_b, keys_b = _aggregate_slot_breadth(pair["slot_b"], snapshot)
         all_relevant_keys.extend(keys_a)
         all_relevant_keys.extend(keys_b)
 
         state = _classify_state(breadth_a, breadth_b)
+        state_raw = _classify_state(raw_a, raw_b)
         interp = pair["interpretations"].get(state, "—") if state != "insufficient_data" \
             else "Insufficient data в една от двете групи."
 
@@ -212,6 +219,9 @@ def compute_cross_lens_divergence(
             n_b_available=n_b,
             state=state,
             interpretation=interp,
+            breadth_a_raw=round(raw_a, 3) if not np.isnan(raw_a) else float("nan"),
+            breadth_b_raw=round(raw_b, 3) if not np.isnan(raw_b) else float("nan"),
+            state_raw=state_raw,
         ))
 
     return CrossLensDivergenceReport(
@@ -240,14 +250,34 @@ def _collect_available(
     return out
 
 
+def _transform_slot_series(available: dict[str, pd.Series]) -> dict[str, pd.Series]:
+    """Прилага каталожния transform върху всяка серия от slot-а (REVIEW-03 т.0.1).
+
+    Суровият 1-периоден momentum четеше индексните нива (CPI, AHE) като "up" при
+    всяка положителна месечна промяна — режимният вход вече гледа ТЕМПА (yoy_pct
+    за индекси), не нивото. level серии минават без промяна (identity).
+    """
+    out: dict[str, pd.Series] = {}
+    for k, s in available.items():
+        transform = SERIES_CATALOG.get(k, {}).get("transform", "level")
+        t = apply_transform(s, transform).dropna()
+        if t.empty:
+            continue
+        out[k] = t
+    return out
+
+
 def _aggregate_slot_breadth(
     slot: dict,
     snapshot: dict[str, pd.Series],
-) -> tuple[float, int, list[str]]:
+) -> tuple[float, float, int, list[str]]:
     """Average of per-peer_group breadth_positive, with invert applied.
 
+    Смятат се ДВЕ breadth стойности: transform-aware (меродавна за state) и
+    legacy raw (shadow за сверка през прехода — REVIEW-03 т.0.1, base-first).
+
     Returns:
-        (aggregate_breadth, total_n_available, keys_touched)
+        (aggregate_breadth, aggregate_breadth_raw, total_n_available, keys_touched)
     """
     lens = slot["lens"]
     peer_groups = slot["peer_groups"]
@@ -260,6 +290,7 @@ def _aggregate_slot_breadth(
             by_pg[e["peer_group"]].append(e["_key"])
 
     group_breadths: list[float] = []
+    group_breadths_raw: list[float] = []
     n_available = 0
     keys_touched: list[str] = []
 
@@ -268,18 +299,22 @@ def _aggregate_slot_breadth(
         available = _collect_available(keys, snapshot)
         if len(available) < MIN_PEER_GROUP_SIZE:
             continue
-        bp = breadth_positive(available)
-        if np.isnan(bp):
-            continue
-        if invert_map.get(pg_name):
-            bp = 1.0 - bp
-        group_breadths.append(bp)
-        n_available += len(available)
+        inverted = bool(invert_map.get(pg_name))
 
-    if not group_breadths:
-        return float("nan"), 0, keys_touched
+        transformed = _transform_slot_series(available)
+        if len(transformed) >= MIN_PEER_GROUP_SIZE:
+            bp = breadth_positive(transformed)
+            if not np.isnan(bp):
+                group_breadths.append(1.0 - bp if inverted else bp)
+                n_available += len(available)
 
-    return float(np.mean(group_breadths)), n_available, keys_touched
+        bp_raw = breadth_positive(available)
+        if not np.isnan(bp_raw):
+            group_breadths_raw.append(1.0 - bp_raw if inverted else bp_raw)
+
+    agg = float(np.mean(group_breadths)) if group_breadths else float("nan")
+    agg_raw = float(np.mean(group_breadths_raw)) if group_breadths_raw else float("nan")
+    return agg, agg_raw, n_available, keys_touched
 
 
 def _classify_state(breadth_a: float, breadth_b: float) -> str:

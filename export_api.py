@@ -276,6 +276,11 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             "slot_b_label": pair.slot_b_label,
             "breadth_a": _clean(pair.breadth_a),
             "breadth_b": _clean(pair.breadth_b),
+            # Shadow (REVIEW-03 т.0.1, base-first): legacy суров breadth за сверка
+            # през прехода; маха се след ≥1 зелен публикационен цикъл.
+            "state_raw": pair.state_raw,
+            "breadth_a_raw": _clean(pair.breadth_a_raw),
+            "breadth_b_raw": _clean(pair.breadth_b_raw),
         })
 
     # ── Non-consensus highlights ─────────────────────────────────────────────
