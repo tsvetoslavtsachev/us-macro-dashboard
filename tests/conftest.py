@@ -38,3 +38,19 @@ def _redirect_briefing_state(monkeypatch, tmp_path):
 
     monkeypatch.setattr(wb, "save_state", _tmp_save)
     monkeypatch.setattr(wb, "load_latest_state", _tmp_load)
+
+    # P3-fix-C (D1): „индикиран/потвърден" вратата чете последния ПУБЛИКУВАН
+    # macro_state.json (реален repo файл) — за херметичност тестовете винаги
+    # виждат None (= indicated). Тестове за confirmed подават previous_regime_key
+    # изрично на compute_executive_summary.
+    import importlib
+
+    for mod_name in ("export_api", "export.quick_briefing", "export.weekly_briefing"):
+        try:
+            mod = importlib.import_module(mod_name)
+        except Exception:
+            continue
+        if hasattr(mod, "load_previous_published_regime"):
+            monkeypatch.setattr(
+                mod, "load_previous_published_regime", lambda *a, **k: None
+            )

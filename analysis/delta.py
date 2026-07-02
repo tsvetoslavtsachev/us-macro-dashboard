@@ -361,3 +361,22 @@ def load_latest_state(
     _, latest_path = candidates[0]
     data = json.loads(latest_path.read_text(encoding="utf-8"))
     return BriefingStateSnapshot.from_dict(data)
+
+
+def load_previous_published_regime(
+    api_path: str = "output/api/macro_state.json",
+) -> Optional[str]:
+    """Режимният ключ от последния ПУБЛИКУВАН macro_state.json (P3-fix-C D1).
+
+    Източникът на „индикиран/потвърден" вратата: потвърждение = същият режим
+    в ≥2 поредни ПУБЛИКУВАНИ снимки. Ползва се публикуваният API JSON (комитва
+    се от export workflow-а → наличен и в CI checkout, и локално), НЕ
+    data/state/ — той е gitignored и живее само на локалната машина, т.е. е
+    невидим за CI прогоните.
+    """
+    try:
+        with open(api_path, encoding="utf-8") as f:
+            prev = json.load(f)
+        return prev.get("executive_summary", {}).get("regime_key")
+    except Exception:
+        return None

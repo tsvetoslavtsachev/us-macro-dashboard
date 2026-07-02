@@ -46,6 +46,7 @@ from analysis.divergence import compute_cross_lens_divergence, compute_intra_len
 from analysis.anomaly import compute_anomalies
 from analysis.non_consensus import compute_non_consensus
 from analysis.executive import compute_executive_summary, REGIME_LABELS_BG, REGIME_CSS_CLASS
+from analysis.delta import load_previous_published_regime
 
 # ── константи ───────────────────────────────────────────────────────────────
 OUTPUT_DIR = BASE_DIR / "output" / "api"
@@ -193,11 +194,15 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     nc_report = compute_non_consensus(regime_snapshot)
 
     print("  🧮 Изчислявам executive summary...")
+    # P3-fix-C (D1): „индикиран/потвърден" се решава срещу последната ПУБЛИКУВАНА
+    # снимка (macro_state.json — комитва се от workflow-а → наличен и в CI).
+    # data/state/ е gitignored → невидим за CI; затова НЕ е източникът тук.
     exec_summary = compute_executive_summary(
         lens_reports=lens_reports,
         cross_report=cross_report,
         anomaly_report=anomaly_report,
         nc_report=nc_report,
+        previous_regime_key=load_previous_published_regime(),
     )
 
     # ── Intra-lens divergences ──────────────────────────────────────────────
@@ -307,6 +312,7 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             "narrative": exec_summary.narrative_bg,
             "supporting_signals": exec_summary.supporting_signals,
             "primary_driver": exec_summary.primary_driver,
+            "regime_confidence": exec_summary.regime_confidence,
             "stale_excluded_count": len(stale_excluded),
             "stale_excluded_keys": stale_excluded,
         },

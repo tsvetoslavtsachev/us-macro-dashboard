@@ -50,6 +50,7 @@ from analysis.delta import (
     compute_delta,
     save_state,
     load_latest_state,
+    load_previous_published_regime,
     STATE_DIR_DEFAULT,
 )
 from analysis.guardrails import (
@@ -151,8 +152,23 @@ def generate_weekly_briefing(
     anomaly_report = compute_anomalies(
         regime_snapshot, z_threshold=2.0, top_n=top_anomalies_n, lookback_years=5
     )
+    # P3-fix-C (D1): предишният персистиран state се зарежда ПРЕДИ exec summary
+    # (храни WoW delta-та); „индикиран/потвърден" обаче се решава срещу последната
+    # ПУБЛИКУВАНА снимка (macro_state.json) — единен източник за всички пътища.
+    prev_state = None
+    if state_dir is not None:
+        try:
+            # WoW сравнение — гледаме поне 5 дни назад, за да хванем предишната
+            # календарна седмица (типично предишния понеделник).
+            prev_state = load_latest_state(
+                state_dir=state_dir, before=today, min_age_days=5
+            )
+        except Exception:
+            prev_state = None
+
     exec_snapshot = compute_executive_summary(
         cross_report, lens_reports, anomaly_report, nc_report,
+        previous_regime_key=load_previous_published_regime(),
     )
 
     # Threshold flags и falsifiers
@@ -164,16 +180,6 @@ def generate_weekly_briefing(
         exec_snapshot, cross_report, lens_reports, anomaly_report, nc_report,
         generated_on=today,
     )
-    prev_state = None
-    if state_dir is not None:
-        try:
-            # WoW сравнение — гледаме поне 5 дни назад, за да хванем предишната
-            # календарна седмица (типично предишния понеделник).
-            prev_state = load_latest_state(
-                state_dir=state_dir, before=today, min_age_days=5
-            )
-        except Exception:
-            prev_state = None
     delta = compute_delta(current_state, prev_state)
 
     as_of = _pick_as_of(lens_reports, cross_report, anomaly_report)

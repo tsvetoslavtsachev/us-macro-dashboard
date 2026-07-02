@@ -381,7 +381,9 @@ def test_compute_executive_summary_stagflation_scenario():
     snap = compute_executive_summary(cross, lens_reports, anom, nc)
 
     assert snap.regime_label == "stagflation_confirmed"
-    assert snap.regime_label_bg == "Стагфлация (потвърдена)"
+    # P3-fix-C (D1): без предишна публикувана снимка режимът е „индикиран"
+    assert snap.regime_confidence == "indicated"
+    assert snap.regime_label_bg == "Стагфлация (индикирана)"
     assert snap.primary_driver == "stagflation_test"
     assert "стагфлационна" in snap.narrative_bg.lower()
     # Anchored counter-signal should appear

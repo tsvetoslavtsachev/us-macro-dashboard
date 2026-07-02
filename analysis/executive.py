@@ -56,6 +56,30 @@ REGIME_LABELS_BG = {
     "transition": "Преходно / смесено",
 }
 
+# P3-fix-C (D1, REVIEW-03 Tier 1.1, решение на Цветослав 03.07): „потвърден" се
+# ЗАСЛУЖАВА с персистентност — режим, видян за първи път, е „индикиран"; ≥2
+# поредни снимки в същия режим → установените форми от REGIME_LABELS_BG.
+# transition няма варианти — той е липса на теза, не теза.
+REGIME_LABELS_BG_INDICATED = {
+    "stagflation_confirmed": "Стагфлация (индикирана)",
+    "soft_landing": "Soft landing (индикиран)",
+    "disinflation_cooling": "Дезинфлация и охлаждане (индикирани)",
+    "policy_dilemma": "Policy dilemma (индикирана)",
+    "expansion": "Разширяване (индикирано)",
+    "slowdown": "Синхронно забавяне (индикирано)",
+    "credit_stress": "Кредитен стрес (индикиран)",
+    "transition": "Преходно / смесено",
+}
+
+
+def resolve_regime_label_bg(regime_key: str, confidence: str) -> str:
+    """BG етикет според персистентната увереност (P3-fix-C D1)."""
+    if confidence == "confirmed":
+        return REGIME_LABELS_BG.get(regime_key, regime_key)
+    return REGIME_LABELS_BG_INDICATED.get(
+        regime_key, REGIME_LABELS_BG.get(regime_key, regime_key)
+    )
+
 REGIME_CSS_CLASS = {
     "stagflation_confirmed": "regime-stag",
     "soft_landing": "regime-soft",
@@ -107,6 +131,8 @@ class RegimeSnapshot:
     narrative_bg: str                       # 2-4 изречения
     lens_rows: list[LensRegimeRow] = field(default_factory=list)
     supporting_signals: list[str] = field(default_factory=list)
+    # P3-fix-C (D1): „indicated" (първа снимка) | "confirmed" (≥2 поредни).
+    regime_confidence: str = "indicated"
 
     def to_dict(self) -> dict:
         return {
@@ -115,6 +141,7 @@ class RegimeSnapshot:
             "regime_label_bg": self.regime_label_bg,
             "regime_css_class": self.regime_css_class,
             "primary_driver": self.primary_driver,
+            "regime_confidence": self.regime_confidence,
             "narrative_bg": self.narrative_bg,
             "lens_rows": [r.to_dict() for r in self.lens_rows],
             "supporting_signals": list(self.supporting_signals),
@@ -130,6 +157,7 @@ def compute_executive_summary(
     lens_reports: dict,
     anomaly_report,
     nc_report,
+    previous_regime_key: Optional[str] = None,
 ) -> RegimeSnapshot:
     """Синтезира regime snapshot от всички analysis reports.
 
@@ -138,6 +166,9 @@ def compute_executive_summary(
         lens_reports: {lens_name → LensBreadthReport} за labor/growth/inflation/liquidity.
         anomaly_report: AnomalyReport (analysis.anomaly).
         nc_report: NonConsensusReport (analysis.non_consensus).
+        previous_regime_key: последният ПЕРСИСТИРАН режим (delta state) —
+            захранва „индикиран/потвърден" вратата (P3-fix-C D1). None →
+            консервативно „indicated".
 
     Returns:
         RegimeSnapshot с класификиран режим, lens таблица и нарация.
@@ -145,6 +176,14 @@ def compute_executive_summary(
     states = {p.pair_id: p.state for p in cross_report.pairs}
 
     regime_key, driver = _classify_regime(states)
+
+    # P3-fix-C (D1): персистентна врата — „потвърден" изисква същия режим в
+    # ≥2 поредни снимки; всичко останало е „индикиран".
+    confidence = (
+        "confirmed"
+        if previous_regime_key is not None and previous_regime_key == regime_key
+        else "indicated"
+    )
 
     lens_rows = _build_lens_rows(lens_reports, anomaly_report)
 
@@ -162,12 +201,13 @@ def compute_executive_summary(
     return RegimeSnapshot(
         as_of=as_of,
         regime_label=regime_key,
-        regime_label_bg=REGIME_LABELS_BG[regime_key],
+        regime_label_bg=resolve_regime_label_bg(regime_key, confidence),
         regime_css_class=REGIME_CSS_CLASS[regime_key],
         primary_driver=driver,
         narrative_bg=narrative,
         lens_rows=lens_rows,
         supporting_signals=supporting_signals,
+        regime_confidence=confidence,
     )
 
 
@@ -175,19 +215,27 @@ def compute_executive_summary(
 # INTERNAL — CLASSIFICATION
 # ============================================================
 
+# P3-fix-C (D2, 03.07): credit-stress правилото е ДЕКЛАРАТИВНО, за да може EU
+# близнакът да ползва EU-native вход (fragmentation_risk върху периферните
+# спредове) без дивергенция в waterfall логиката. US семантика: кредитните
+# спредове се разширяват въпреки easing (a_up_b_down на credit_policy_transmission).
+CREDIT_STRESS_RULES = (
+    ("credit_policy_transmission", ("a_up_b_down",)),
+)
+
+
 def _classify_regime(states: dict[str, str]) -> tuple[str, str]:
     """Връща (regime_label, primary_driver_pair_id).
 
     Логика:
       1. stagflation_test е primary — четирите му state-а директно mapp-ват в режим.
       2. Ако stag е transition/insufficient:
-         - credit stress (credit_policy_transmission = a_up_b_down) override-ва.
+         - credit stress (CREDIT_STRESS_RULES — region-specific вход) override-ва.
          - growth_labor_lead_lag е secondary — мапва към expansion/slowdown.
       3. Default: transition.
     """
     stag = states.get("stagflation_test")
     growth_labor = states.get("growth_labor_lead_lag")
-    credit = states.get("credit_policy_transmission")
 
     # Primary path — stagflation_test е диагностика
     if stag == "both_up":
@@ -200,8 +248,9 @@ def _classify_regime(states: dict[str, str]) -> tuple[str, str]:
         return "policy_dilemma", "stagflation_test"
 
     # Fallback 1 — credit stress е по-силен сигнал от transition
-    if credit == "a_up_b_down":
-        return "credit_stress", "credit_policy_transmission"
+    for pair_id, stress_states in CREDIT_STRESS_RULES:
+        if states.get(pair_id) in stress_states:
+            return "credit_stress", pair_id
 
     # Fallback 2 — growth × labor alignment
     if growth_labor == "both_up":
@@ -340,7 +389,9 @@ def _extract_supporting_signals(
 
 _REGIME_OPENINGS = {
     "stagflation_confirmed": (
-        "Картината показва потвърдена стагфлационна конфигурация — трудовият пазар "
+        # P3-fix-C (D1): „потвърдена" пада от наратива — увереността я носи
+        # етикетът (индикирана/потвърдена по персистентност), не openings-ът.
+        "Картината показва стагфлационна конфигурация — трудовият пазар "
         "остава tight, а инфлационният натиск е broad-based."
     ),
     "soft_landing": (

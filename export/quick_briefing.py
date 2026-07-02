@@ -20,6 +20,7 @@ from typing import Optional
 
 import pandas as pd
 
+from analysis.delta import load_previous_published_regime
 from analysis.executive import (
     LENS_LABEL_BG,
     REGIME_CSS_CLASS,
@@ -657,8 +658,11 @@ def generate_quick_briefing(
         regime_snapshot, z_threshold=2.0, top_n=10, lookback_years=5
     )
     nc_report = compute_non_consensus(regime_snapshot)
+    # P3-fix-C (D1): „индикиран/потвърден" срещу последната ПУБЛИКУВАНА снимка
+    # (macro_state.json — наличен и в CI; data/state/ е gitignored → само локален).
     exec_snapshot = compute_executive_summary(
         cross_report, lens_reports, anomaly_report, nc_report,
+        previous_regime_key=load_previous_published_regime(),
     )
 
     composite = _composite_score(exec_snapshot, regime_snapshot)
