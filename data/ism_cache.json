@@ -2,21 +2,21 @@
   "manufacturing_pmi": {
     "indicator": "manufacturing_pmi",
     "current": {
-      "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/may/",
-      "last_fetched": "2026-06-26T17:26:40.560508",
-      "month": "May 2026",
-      "headline": 54.0,
+      "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/june/",
+      "last_fetched": "2026-07-03T17:07:27.355138",
+      "month": "June 2026",
+      "headline": 53.3,
       "subindices": {
-        "Backlog of Orders": 52.2,
-        "Employment": 48.6,
-        "Inventories": 49.9,
-        "Customers' Inventories": 42.7,
-        "Imports": 53.0,
-        "Supplier Deliveries": 60.6,
-        "Prices": 82.1,
-        "New Export Orders": 50.6,
-        "Production": 54.3,
-        "New Orders": 56.8
+        "Backlog of Orders": 50.5,
+        "Employment": 49.7,
+        "Inventories": 51.4,
+        "Customers' Inventories": 42.3,
+        "Imports": 52.9,
+        "Supplier Deliveries": 57.4,
+        "Prices": 73.0,
+        "Production": 52.2,
+        "New Orders": 56.0,
+        "New Export Orders": 48.5
       },
       "parse_quality": "ok",
       "missing_subindices": []
@@ -958,7 +958,8 @@
       "1948-07-01": 48.4,
       "1948-06-01": 53.0,
       "1948-05-01": 49.5,
-      "2026-05-01": 54.0
+      "2026-05-01": 54.0,
+      "2026-06-01": 53.3
     },
     "history_source": "bloomberg_csv",
     "history_imported": "2026-05-19T23:13:19.922380"
@@ -967,7 +968,7 @@
     "indicator": "services_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/may/",
-      "last_fetched": "2026-06-26T17:26:46.194446",
+      "last_fetched": "2026-07-03T17:07:28.517275",
       "month": "May 2026",
       "headline": 54.5,
       "subindices": {
