@@ -364,7 +364,7 @@ def _render_funding_radar(funding_view: Optional[dict], today: date) -> str:
     """
     parts = ["## 1.6 Стабилност на финансирането (Treasury Funding Radar)", ""]
     parts.append(
-        "Leading сетиво за стрес в доларовия водопровод (репо · резерви · SOFR · "
+        "Същодневно сетиво за стрес в доларовия водопровод (репо · резерви · SOFR · "
         "аукциони · ливъридж) — пали ПРЕДИ ценовия Kill Switch. Числата идват "
         "готови от standalone радара "
         "([публикуван JSON](https://tsvetoslavtsachev.github.io/treasury-funding-radar/)) "

@@ -592,7 +592,7 @@ def _render_funding_card(funding_view: Optional[dict], today: date) -> str:
     <div style="flex:1;min-width:240px;">
       <div style="font-size:15px;font-weight:600;color:#f0f6fc;">{verdict}</div>
       <div class="muted" style="margin-top:4px;">
-        Leading сетиво за стрес в доларовия водопровод (репо · резерви · SOFR · аукциони · ливъридж) —
+        Същодневно сетиво за стрес в доларовия водопровод (репо · резерви · SOFR · аукциони · ливъридж) —
         пали ПРЕДИ ценовия Kill Switch. Числата идват готови от
         <a href="{radar_url}" style="color:#58a6ff;">standalone радара</a> и не се преизчисляват тук.
       </div>
