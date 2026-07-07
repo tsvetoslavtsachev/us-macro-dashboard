@@ -1881,6 +1881,61 @@ for _k, _m in SERIES_CATALOG.items():
 
 
 # ============================================================
+# NOWCAST РЕГИСТЪР (П4) — външни модели, КОНТЕКСТНИ редове само
+# ============================================================
+# НАРОЧНО отделен от SERIES_CATALOG: nowcast-ите НЕ влизат в лещите,
+# composite-а, breadth или anomaly скана (всички те итерират SERIES_CATALOG).
+# Ingest, НЕ build — числата идват готови от външния модел (Atlanta Fed),
+# ние само ги показваме descriptive в briefing_context секция 1.5.
+#
+# Проверено на FRED (П4, 2026-07-07):
+#   - GDPNOW ✅ (Atlanta Fed GDPNow, real GDP растеж, текущо тримесечие, SAAR)
+#   - PCENOW ✅ (Atlanta Fed GDPNow, REAL PCE РАСТЕЖ — потребление/обем;
+#     НЕ е PCE инфлация!)
+#   - PCE ИНФЛАЦИОНЕН nowcast: НЯМА FRED серия (Cleveland Fed inflation
+#     nowcast не се дистрибутира през FRED; EXPINF* са очаквания, не nowcast)
+#     → НЕ строим proxy (мандат П4), само докладваме липсата.
+#   - PCE Supercore (услуги без жилища): ценовите компоненти липсват в
+#     каталога/кеша → докладвано като липса, не деривирано.
+NOWCAST_CATALOG: dict[str, dict[str, Any]] = {
+    "GDPNOW": {
+        "source": "fred",
+        "id": "GDPNOW",
+        "region": "US",
+        "name_bg": "GDPNow — nowcast за real GDP растеж (Atlanta Fed)",
+        "name_en": "GDPNow Real GDP Growth Nowcast (Atlanta Fed)",
+        "transform": "level",
+        # FRED честотата е quarterly (1 obs на тримесечие, лейбъл в началото му),
+        # но СТОЙНОСТТА се ревизира ~седмично до затварянето на тримесечието →
+        # weekly TTL за свеж fetch.
+        "release_schedule": "weekly",
+        "revision_prone": True,
+        "narrative_hint": (
+            "nowcast (външен модел — Atlanta Fed GDPNow). Descriptive: къде моделът "
+            "вижда растежа на ТЕКУЩОТО тримесечие (SAAR %), ревизира се с всеки "
+            "data release. НЕ е наша прогноза и НЕ влиза в лещите/композита."
+        ),
+    },
+    "PCENOW": {
+        "source": "fred",
+        "id": "PCENOW",
+        "region": "US",
+        "name_bg": "PCENow — nowcast за REAL PCE растеж (Atlanta Fed)",
+        "name_en": "Real PCE Growth Nowcast (Atlanta Fed GDPNow)",
+        "transform": "level",
+        "release_schedule": "weekly",
+        "revision_prone": True,
+        "narrative_hint": (
+            "nowcast (външен модел — Atlanta Fed GDPNow). ВНИМАНИЕ: това е REAL "
+            "PCE РАСТЕЖ (потребление, обем) за текущото тримесечие — НЕ PCE "
+            "инфлация. PCE инфлационен nowcast няма FRED серия (Cleveland Fed "
+            "не дистрибутира през FRED). Контекстен ред само."
+        ),
+    },
+}
+
+
+# ============================================================
 # HELPER FUNCTIONS
 # ============================================================
 

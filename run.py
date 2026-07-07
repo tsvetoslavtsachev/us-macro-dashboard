@@ -433,7 +433,7 @@ def main_export_context(args) -> str:
     from datetime import date as date_cls
     from sources.fred_adapter import FredAdapter
     from sources.external_loader import load_external_series
-    from catalog.series import SERIES_CATALOG
+    from catalog.series import SERIES_CATALOG, NOWCAST_CATALOG
     from analysis.breadth import compute_lens_breadth
     from analysis.divergence import compute_cross_lens_divergence
     from analysis.anomaly import compute_anomalies
@@ -459,6 +459,18 @@ def main_export_context(args) -> str:
         for key, meta in SERIES_CATALOG.items()
         if meta.get("source") == "fred"
     ]
+    # П4: nowcast редовете (GDPNOW/PCENOW) се fetch-ват заедно с каталога, но
+    # влизат САМО в context секцията (NOWCAST_CATALOG е нарочно отделен от
+    # SERIES_CATALOG → не участва в лещи/composite/anomaly).
+    fred_specs += [
+        {
+            "key": key,
+            "fred_id": meta["id"],
+            "release_schedule": meta["release_schedule"],
+        }
+        for key, meta in NOWCAST_CATALOG.items()
+        if meta.get("source") == "fred"
+    ]
 
     if args.refresh:
         print("🔄 Refreshing FRED серии (force, всички)...")
@@ -480,14 +492,15 @@ def main_export_context(args) -> str:
         else:
             print(f"📦 Cache fresh — пропускам refresh.\n")
 
-    # Build snapshot — FRED + external (ISM, CB LEI/CCI)
+    # Build snapshot — FRED + external (ISM, CB LEI/CCI) + nowcast контекстни редове
     snapshot = adapter.get_snapshot(SERIES_CATALOG.keys())
+    snapshot.update(adapter.get_snapshot(NOWCAST_CATALOG.keys()))
     external = load_external_series(SERIES_CATALOG, BASE_DIR)
     if external:
         snapshot.update(external)
         print(f"📦 External: добавени {len(external)} ISM/CB серии")
     snapshot.update(_bloomberg_bridge_snapshot())
-    print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
+    print(f"📊 Snapshot: {len(snapshot)}/{len(SERIES_CATALOG) + len(NOWCAST_CATALOG)} серии с данни\n")
 
     # Compute analysis layers
     print("🧮 Изчислявам breadth, cross-lens, anomalies...")

@@ -791,6 +791,57 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
         )
 
     parts.append("")
+
+    # ═══════════════════════════════════════
+    # Nowcasts — външни модели (П4; ingest, НЕ build)
+    # ═══════════════════════════════════════
+    parts.append("### Nowcasts (външни модели)")
+    parts.append("")
+    parts.append(
+        "Descriptive редове от готови външни модели — НЕ наша прогноза, НЕ влизат "
+        "в лещите/композита. Ревизират се с всеки data release."
+    )
+    parts.append("")
+
+    gdpnow = _last_value(snapshot.get("GDPNOW"))
+    gdpnow_date = _last_obs_date(snapshot.get("GDPNOW"))
+    pcenow = _last_value(snapshot.get("PCENOW"))
+    pcenow_date = _last_obs_date(snapshot.get("PCENOW"))
+
+    if gdpnow is None and pcenow is None:
+        parts.append("_GDPNOW/PCENOW липсват в snapshot-а (fetch не е правен още)._")
+    else:
+        parts.append("| Nowcast | Стойност | Какво мери |")
+        parts.append("|---|---|---|")
+        if gdpnow is not None:
+            q_lbl = ""
+            if gdpnow_date:
+                q_num = (gdpnow_date.month - 1) // 3 + 1
+                q_lbl = f" за Q{q_num} {gdpnow_date.year}"
+            parts.append(
+                f"| **GDPNow** — nowcast (външен модел: Atlanta Fed) | {gdpnow:+.2f}% SAAR{q_lbl} | "
+                f"Real GDP растеж на текущото тримесечие |"
+            )
+        if pcenow is not None:
+            q_lbl = ""
+            if pcenow_date:
+                q_num = (pcenow_date.month - 1) // 3 + 1
+                q_lbl = f" за Q{q_num} {pcenow_date.year}"
+            parts.append(
+                f"| **PCENow** — nowcast (външен модел: Atlanta Fed) | {pcenow:+.2f}% SAAR{q_lbl} | "
+                f"**REAL PCE растеж** (потребление, обем) — ⚠ НЕ PCE инфлация |"
+            )
+
+    parts.append("")
+    parts.append(
+        "_Липси (П4, проверено на FRED 07.07.2026): **PCE инфлационен nowcast** — "
+        "няма FRED серия (Cleveland Fed nowcast не се дистрибутира през FRED; "
+        "EXPINF* са очаквания, не nowcast) → не строим proxy. "
+        "**PCE Supercore** (услуги без жилища) — ценовите компоненти липсват в "
+        "каталога/кеша → не се деривира._"
+    )
+
+    parts.append("")
     return "\n".join(parts)
 
 
