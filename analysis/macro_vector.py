@@ -303,14 +303,27 @@ def build_history_matrix(
 # ============================================================
 
 def z_score_matrix(history_df: pd.DataFrame) -> pd.DataFrame:
-    """Full-sample z-score на всяка колона.
+    """Full-sample **robust** z-score на всяка колона (median + 1.4826·MAD).
+
+    D5 / П2а: заменяме non-robust mean/std с median + 1.4826·MAD (σ-еквивалент,
+    устойчив на Volcker 1980-82 / 2020 / 2021-23 outlier-и). Обхватът остава 1976
+    (документираният компромис — history_df вече е windowed) — променяме СТАТИСТИКАТА,
+    не обхвата. Non-robust mean/std обръщаше знака на инфлационната дименсия
+    (core CPI 2.96% → z −0.31 vs 1976); robust връща коректния положителен знак.
+
+    MAD floor (П2а допълнение): zero-inflated дименсии (sahm ≥ 0 по конструкция,
+    >50% от месеците на медианата) сриват MAD до float-noise (~1e-15) → z избухва
+    (~1e14) и една дименсия удавя косинуса (всички top sims → 1.0). Затова scale
+    fallback верига при дегенерация: 1.4826·MAD → IQR/1.349 → std(ddof=0), с
+    ОТНОСИТЕЛЕН епсилон спрямо мащаба на серията (не `== 0` — float MAD рядко е
+    точно нула). И трите са σ-еквиваленти; сменя се само estimator-ът, не смисълът.
 
     Args:
-        history_df: output от build_history_matrix.
+        history_df: output от build_history_matrix (вече windowed към 1976).
 
     Returns:
-        DataFrame със същия shape. Колона с константна стойност → 0.0.
-        NaN-ите в входа остават NaN.
+        DataFrame със същия shape. Колона без НИКАКВА вариация (и трите estimator-а
+        дегенерирали) → 0.0. NaN-ите в входа остават NaN.
     """
     out = pd.DataFrame(index=history_df.index, columns=history_df.columns, dtype=float)
     for col in history_df.columns:
@@ -318,13 +331,24 @@ def z_score_matrix(history_df: pd.DataFrame) -> pd.DataFrame:
         if s.empty:
             out[col] = np.nan
             continue
-        mu = s.mean()
-        sigma = s.std(ddof=0)
-        if sigma == 0 or np.isnan(sigma):
+        med = float(s.median())
+        mad = float((s - med).abs().median())
+        scale = 1.4826 * mad
+        # Относителен епсилон: под него estimator-ът се счита дегенерирал.
+        eps = 1e-9 * max(1.0, float(s.abs().max()))
+        if not np.isfinite(scale) or scale < eps:
+            # Fallback 1: IQR (σ-еквивалент за нормална дистрибуция = IQR/1.349)
+            iqr = float(s.quantile(0.75) - s.quantile(0.25))
+            scale = iqr / 1.349
+        if not np.isfinite(scale) or scale < eps:
+            # Fallback 2: класически std (последна защита; по-добре non-robust
+            # отколкото взривен z за zero-inflated колона)
+            scale = float(s.std(ddof=0))
+        if not np.isfinite(scale) or scale < eps:
             out[col] = 0.0
             out.loc[history_df[col].isna(), col] = np.nan
             continue
-        out[col] = (history_df[col] - mu) / sigma
+        out[col] = (history_df[col] - med) / scale
     return out
 
 

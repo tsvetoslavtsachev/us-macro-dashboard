@@ -266,23 +266,40 @@ class TestBuildHistoryMatrix:
 
 class TestZScoreMatrix:
 
-    def test_standard_column_has_zero_mean_unit_std(self):
+    def test_standard_column_has_zero_median_unit_robust_scale(self):
+        # П2а: robust z (median + 1.4826·MAD). Инвариантите са robust, не mean/std:
+        #   median(z) == 0 (точно, изваждаме median)
+        #   1.4826 · MAD(z) == 1 (точно, делим на robust scale)
         idx = _monthly_range("2000-01-01", "2020-12-31")
         df = pd.DataFrame({
             "a": np.random.RandomState(0).normal(5, 2, len(idx)),
             "b": np.random.RandomState(1).normal(-3, 0.5, len(idx)),
         }, index=idx)
         z = z_score_matrix(df)
-        assert z["a"].mean() == pytest.approx(0.0, abs=1e-10)
-        assert z["a"].std(ddof=0) == pytest.approx(1.0, abs=1e-10)
-        assert z["b"].mean() == pytest.approx(0.0, abs=1e-10)
-        assert z["b"].std(ddof=0) == pytest.approx(1.0, abs=1e-10)
+        for col in ("a", "b"):
+            zc = z[col]
+            assert zc.median() == pytest.approx(0.0, abs=1e-10)
+            robust_scale = 1.4826 * (zc - zc.median()).abs().median()
+            assert robust_scale == pytest.approx(1.0, abs=1e-10)
 
     def test_constant_column_returns_zeros(self):
         idx = _monthly_range("2000-01-01", "2020-12-31")
         df = pd.DataFrame({"c": 3.0}, index=idx)
         z = z_score_matrix(df)
         assert (z["c"].dropna() == 0.0).all()
+
+    def test_zero_inflated_column_does_not_explode(self):
+        # П2а MAD floor: zero-inflated колона (тип sahm — >50% точки на медианата)
+        # има MAD ≈ 0 → без floor z избухва (~1e14) и удавя косинуса. Fallback
+        # веригата (MAD → IQR → std) трябва да държи всички z финитни и разумни.
+        idx = _monthly_range("2000-01-01", "2020-12-31")
+        vals = np.zeros(len(idx))
+        vals[::7] = np.linspace(0.1, 1.2, len(vals[::7]))  # рецесионни spike-ове
+        df = pd.DataFrame({"sahm_like": vals}, index=idx)
+        z = z_score_matrix(df)
+        zc = z["sahm_like"].dropna()
+        assert np.all(np.isfinite(zc))
+        assert zc.abs().max() < 10.0, f"z взривен: {zc.abs().max()}"
 
     def test_nan_inputs_remain_nan(self):
         idx = _monthly_range("2000-01-01", "2005-12-31")
