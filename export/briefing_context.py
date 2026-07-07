@@ -53,7 +53,9 @@ from sources.funding_radar_adapter import (
 # CONFIG
 # ============================================================
 
-HISTORY_YEARS = 5             # window за percentile rank + range stats
+HISTORY_YEARS = 10            # window за percentile rank + range stats (канон 10г,
+                              # консистентно с core/scorer.py WINDOW_YEARS=10 и api/scorer;
+                              # П1а — маха 5г↔10г↔видим разминаването на клиентските повърхности)
 FACT_CARD_TAIL = 6            # последни N readings в fact card
 LENS_ORDER = ["labor", "growth", "inflation", "liquidity", "housing"]
 
@@ -144,7 +146,7 @@ def generate_briefing_context(
         anomaly_report: AnomalyReport (с .top).
         today: дата за file name + header.
         output_path: директория за изход.
-        history_years: window за percentile/range (default 5).
+        history_years: window за percentile/range (default 10, канон).
         funding_state: health-aware view от sources.funding_radar_adapter
             (Treasury Funding Radar). None → секцията се пропуска тихо.
 
@@ -224,6 +226,10 @@ def _annualized_change(series: Optional[pd.Series], periods: int = 3) -> Optiona
 
     За CPI/PPI/payrolls конвенцията е (1 + cumulative_n_period)^(12/n) − 1.
     Връща в проценти (12.5 = 12.5%).
+
+    ⚠ Noise (П1г): анюализацията умножава едномесечния шум по ~12/n (за n=3 → ×4).
+    Една месечна точка мести резултата с ~±0.4pp; близо до праговете чети с
+    2-3-месечно потвърждение.
     """
     if series is None or series.empty:
         return None
@@ -240,8 +246,8 @@ def _annualized_change(series: Optional[pd.Series], periods: int = 3) -> Optiona
     return float(annualized * 100)
 
 
-def _percentile_5y(series: Optional[pd.Series], history_years: int = 5) -> Optional[float]:
-    """Percentile rank на последната стойност спрямо 5y window."""
+def _percentile_5y(series: Optional[pd.Series], history_years: int = HISTORY_YEARS) -> Optional[float]:
+    """Percentile rank на последната стойност спрямо history_years window (канон 10г)."""
     if series is None or series.empty:
         return None
     s = series.dropna().sort_index()
@@ -470,6 +476,14 @@ def _render_executive_summary(lens_reports, anomaly_report, snapshot=None) -> st
         lines.append(
             f"| {LENS_LABEL_BG.get(lens, lens)} | {general} | {score_str} | {avg_str} | {n_anom} |"
         )
+    lines.append("")
+    lines.append(
+        "> ⚠ **Инфлация — четене на score (П1в):** здравето на инфлационната леща е "
+        "**спрямо последното десетилетие (вкл. суржа 2021-23), НЕ спрямо целта 2%**. "
+        "Разширеният 10г scale прави ~3% core CPI да чете „норма\" (score ~50) — това е "
+        "артефакт на прозореца, не сигнал за здраве. Не цитирай инфлационния score като "
+        "„здраве\" спрямо целта. (Scale redesign = паркирано решение 2б.)"
+    )
     return "\n".join(lines)
 
 
@@ -483,20 +497,30 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
       - Anchored band проверка (BE 5Y5Y, MICH срещу 2010-19 anchored zone)
       - PPI Core vs CPI Core lead-lag (3m annualized)
 
-    Deflator: Core CPI YoY (CPILFESL) — Fed-preferred.
+    Deflator за покупателна способност: headline CPI YoY (CPIAUCSL) — П1б.
+    (Core CPI = Fed-preferred за ПОЛИТИКА, но подценява загубата на покупателна
+    способност; показва се като референция.)
     Real Fed Funds: forward (FED_FUNDS − BREAKEVEN_5Y5Y).
     """
     parts = ["## 1.5 Cross-spreads и реални нива", ""]
     parts.append(
-        "Производни числа за директно използване в теза. **Deflator: Core CPI** "
-        "(CPILFESL YoY) — Fed-preferred. **Real Fed Funds: forward** "
+        "Производни числа за директно използване в теза. **Deflator за покупателна "
+        "способност: headline CPI** (CPIAUCSL YoY) — П1б. За real-volume/real-wage "
+        "твърдения headline е коректният дефлатор; **core CPI** (CPILFESL) е "
+        "Fed-preferred за политика, но подценява загубата на покупателна способност "
+        "(сега разликата е ~1.3pp). **Real Fed Funds: forward** "
         "(FED_FUNDS − BREAKEVEN_5Y5Y). Тези числа НЕ са в caталога — "
         "изчислени са тук от налични серии."
     )
     parts.append("")
 
-    # ─── Get core CPI YoY for deflator ───
+    # ─── Deflator за покупателна способност = headline CPI (П1б) ───
+    # Core остава като референтен ред; real-X ползва headline. Ако headline
+    # липсва в snapshot-а → честен fallback към core с изричен етикет.
     core_cpi_yoy = _yoy_pct(snapshot.get("CPILFESL"))
+    headline_cpi_yoy = _yoy_pct(snapshot.get("CPIAUCSL"))
+    deflator = headline_cpi_yoy if headline_cpi_yoy is not None else core_cpi_yoy
+    defl_short = "headline CPI" if headline_cpi_yoy is not None else "core CPI (⚠ headline липсва)"
 
     # ═══════════════════════════════════════
     # Реални нива
@@ -504,11 +528,17 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
     parts.append("### Реални нива")
     parts.append("")
 
-    if core_cpi_yoy is None:
-        parts.append("_Core CPI липсва — реалните нива не могат да се изчислят._")
+    if deflator is None:
+        parts.append("_Дефлатор липсва (нито headline, нито core CPI) — реалните нива не могат да се изчислят._")
         parts.append("")
     else:
-        parts.append(f"_Core CPI (CPILFESL) YoY = **{core_cpi_yoy:+.2f}%** — използва се като deflator._")
+        core_str = f"{core_cpi_yoy:+.2f}%" if core_cpi_yoy is not None else "—"
+        head_str = f"{headline_cpi_yoy:+.2f}%" if headline_cpi_yoy is not None else "—"
+        parts.append(
+            f"_Дефлатор = **{defl_short} = {deflator:+.2f}%** (покупателна способност). "
+            f"Референция: headline CPI (CPIAUCSL) {head_str} · core CPI (CPILFESL) {core_str} "
+            f"— core е Fed-preferred за политика, не за real-volume._"
+        )
         parts.append("")
         parts.append("| Метрика | Стойност | Интерпретация |")
         parts.append("|---|---|---|")
@@ -516,24 +546,24 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
         # Real wages — ECIWAG (quarterly, periods=4)
         eci_yoy = _yoy_pct(snapshot.get("ECIWAG"), periods=4)
         if eci_yoy is not None:
-            real = eci_yoy - core_cpi_yoy
+            real = eci_yoy - deflator
             interp = (
                 "workers winning" if real > 0.5 else
                 "workers losing (real wages contracting)" if real < -0.3 else
                 "essentially flat — реално workers не печелят, въпреки nominal ръст"
             )
-            parts.append(f"| Real ECIWAG (Q-o-Q ann.) | {real:+.2f}% (nominal {eci_yoy:+.2f}% − core CPI {core_cpi_yoy:+.2f}%) | {interp} |")
+            parts.append(f"| Real ECIWAG (Q-o-Q ann.) | {real:+.2f}% (nominal {eci_yoy:+.2f}% − {defl_short} {deflator:+.2f}%) | {interp} |")
 
         # Real wages — AHE (monthly)
         ahe_yoy = _yoy_pct(snapshot.get("AHE"))
         if ahe_yoy is not None:
-            real = ahe_yoy - core_cpi_yoy
+            real = ahe_yoy - deflator
             interp = (
                 "AHE winning" if real > 0.5 else
                 "AHE losing" if real < -0.3 else
                 "AHE flat real"
             )
-            parts.append(f"| Real AHE (YoY) | {real:+.2f}% (nominal {ahe_yoy:+.2f}%) | {interp} |")
+            parts.append(f"| Real AHE (YoY) | {real:+.2f}% (nominal {ahe_yoy:+.2f}% − {defl_short} {deflator:+.2f}%) | {interp} |")
 
         # Real Fed Funds (forward — A2 decision)
         ff_now = _last_value(snapshot.get("FED_FUNDS"))
@@ -555,37 +585,37 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
         # Real M2 (с Core CPI)
         m2_yoy = _yoy_pct(snapshot.get("M2"))
         if m2_yoy is not None:
-            real = m2_yoy - core_cpi_yoy
+            real = m2_yoy - deflator
             interp = (
                 "expansionary (excess liquidity, Friedman tradition)" if real > 2.0 else
                 "modest expansion" if real > 0.5 else
                 "neutral" if real > -0.5 else
                 "contractionary"
             )
-            parts.append(f"| Real M2 (YoY) | {real:+.2f}% (nominal M2 {m2_yoy:+.2f}%) | {interp} |")
+            parts.append(f"| Real M2 (YoY) | {real:+.2f}% (nominal M2 {m2_yoy:+.2f}% − {defl_short} {deflator:+.2f}%) | {interp} |")
 
         # Real RSXFS
         rsxfs_yoy = _yoy_pct(snapshot.get("RSXFS"))
         if rsxfs_yoy is not None:
-            real = rsxfs_yoy - core_cpi_yoy
+            real = rsxfs_yoy - deflator
             interp = (
                 "strong consumer (real volume growth)" if real > 2.0 else
                 "modest real growth" if real > 0.3 else
                 "near-flat — nominal NEW MAX е nominal illusion" if real > -0.5 else
                 "real consumer pullback"
             )
-            parts.append(f"| Real retail sales (YoY) | {real:+.2f}% (nominal {rsxfs_yoy:+.2f}%) | {interp} |")
+            parts.append(f"| Real retail sales (YoY) | {real:+.2f}% (nominal {rsxfs_yoy:+.2f}% − {defl_short} {deflator:+.2f}%) | {interp} |")
 
         # Real C&I loans
         cni_yoy = _yoy_pct(snapshot.get("C_AND_I_LOANS"))
         if cni_yoy is not None:
-            real = cni_yoy - core_cpi_yoy
+            real = cni_yoy - deflator
             interp = (
                 "real credit expansion" if real > 1.0 else
                 "neutral credit" if real > -0.5 else
                 "real contraction"
             )
-            parts.append(f"| Real C&I loans (YoY) | {real:+.2f}% (nominal {cni_yoy:+.2f}%) | {interp} |")
+            parts.append(f"| Real C&I loans (YoY) | {real:+.2f}% (nominal {cni_yoy:+.2f}% − {defl_short} {deflator:+.2f}%) | {interp} |")
 
         parts.append("")
 
@@ -667,9 +697,9 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
     parts.append("")
 
     # ─── Anchored zones (A4) ───
-    parts.append("**Anchored band проверка** (zone от 2010-19 era; percentile vs 5y window):")
+    parts.append("**Anchored band проверка** (zone от 2010-19 era; percentile (10г)):")
     parts.append("")
-    parts.append("| Серия | Текущо | Anchored zone | В зоната? | 5y percentile |")
+    parts.append("| Серия | Текущо | Anchored zone | В зоната? | percentile (10г) |")
     parts.append("|---|---|---|---|---|")
 
     for sid, (lo, hi) in ANCHORED_ZONES.items():
@@ -707,6 +737,11 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
         parts.append(f"- CPI Core: {cpi_yoy:+.2f}% YoY · **{cpi_3m:+.2f}% 3m annualized**")
         parts.append(f"- 3m gap (PPI − CPI): **{gap_3m:+.2f}pp**")
         parts.append(f"- Pipeline signal: {interp}")
+        parts.append(
+            "- ⚠ **Noise caveat (П1г):** 3m annualized има ~±0.4pp/мес лост от една "
+            "месечна точка (×4 анюализация). Близо до праговете (gap ±0.5pp) чети с "
+            "2-3-месечно потвърждение, не като едномесечен обрат."
+        )
     else:
         parts.append("_PPICORE или CPILFESL липсват — pipeline lead-lag не може да се изчисли._")
 
@@ -802,7 +837,7 @@ def _render_anomalies(anomaly_report, snapshot, today: date, history_years: int)
     parts.append(
         f"Серии с **|z|>2** (lookback {anomaly_report.lookback_years}y), "
         f"сортирани по абсолютна сила. Всеки fact card съдържа стойност, "
-        f"делта в правилни units (bps/Δ/%), 5-годишен range, последни {FACT_CARD_TAIL} readings и narrative_hint."
+        f"делта в правилни units (bps/Δ/%), 10-годишен range, последни {FACT_CARD_TAIL} readings и narrative_hint."
     )
     parts.append("")
     parts.append(
@@ -857,11 +892,11 @@ def _series_fact_card(
         long_chg = float("nan")
         short_chg = float("nan")
 
-    # 5y window
+    # history_years window (канон 10г)
     cutoff = pd.Timestamp(last_date) - pd.DateOffset(years=history_years)
     s_hist = s[s.index >= cutoff]
 
-    # 5y range stats
+    # range stats (10г)
     if len(s_hist) > 1:
         hist_min = float(s_hist.min())
         hist_max = float(s_hist.max())
@@ -871,7 +906,7 @@ def _series_fact_card(
     else:
         hist_min = hist_max = hist_median = pct_rank = float("nan")
 
-    # Z-score (recompute от 5y window за consistency)
+    # Z-score (recompute от history_years window (10г) за consistency)
     if len(s_hist) > 1:
         std = float(s_hist.std())
         mean = float(s_hist.mean())
@@ -921,7 +956,7 @@ def _series_fact_card(
     # Current state line
     lines.append(
         f"- **Текущо ({last_date}):** {fmt_value(last_value)} · "
-        f"**z** {z:+.2f} · **percentile (5y)** {pct_rank:.0f}%"
+        f"**z** {z:+.2f} · **percentile (10г)** {pct_rank:.0f}%"
         + (f" · **Δ direction** {anomaly.direction}" if anomaly else "")
         + (" · **NEW 5Y MAX** ⚠" if anomaly and anomaly.is_new_extreme and anomaly.new_extreme_direction == "max" else "")
         + (" · **NEW 5Y MIN** ⚠" if anomaly and anomaly.is_new_extreme and anomaly.new_extreme_direction == "min" else "")
@@ -937,7 +972,7 @@ def _series_fact_card(
     # 5y range
     if not (math.isnan(hist_min) or math.isnan(hist_max)):
         lines.append(
-            f"- **5y range:** мин {fmt_value(hist_min)} · "
+            f"- **10г range:** мин {fmt_value(hist_min)} · "
             f"медиана {fmt_value(hist_median)} · макс {fmt_value(hist_max)}"
         )
 
@@ -959,9 +994,9 @@ def _render_methodology_compact() -> str:
     return """## 5. Методология (compact)
 
 - **Breadth ↑** — % серии в peer group с положителен 1-периоден momentum. Прагове: >60% разширяване, <40% свиване, между = смесено.
-- **Breadth |z|>2** — % серии в групата със стойност >2 стандартни отклонения от 5y mean (екстремна).
-- **z-score** — стандартизирана отдалеченост от 5y средна. |z|>2 = ~5% от времето в нормална дистрибуция.
-- **Percentile (5y)** — къде стои текущата стойност в 5-годишното разпределение (0% = нов 5y минимум, 100% = нов 5y максимум).
+- **Breadth |z|>2** — % серии в групата със стойност >2 стандартни отклонения от 10г robust норма (median/MAD) (екстремна).
+- **z-score** — стандартизирана отдалеченост от 10г средна. |z|>2 = ~5% от времето в нормална дистрибуция.
+- **Percentile (10г)** — къде стои текущата стойност в 10-годишното разпределение (0% = нов 10г минимум, 100% = нов 10г максимум). Канон 10г за всички публикувани повърхности (context/Пулс/api). NEW 5Y MAX/MIN флаговете са отделен anomaly прозорец (5г lookback).
 - **Cross-lens states** — `both_up` / `both_down` / `a_up_b_down` / `a_down_b_up` (divergence) / `transition` (между прагове) / `insufficient_data`.
 - **Display-by-type** — за rate-нива (BREAKEVEN, UST, OAS, FED_FUNDS, UNRATE) Δ е в bps; за signed индекси (NFCI, CFNAI, UMCSENT) — абсолютна делта; за price levels (CPI, payrolls) — %.
 - **Малки peer groups (3 серии)** — 1 серия флипваща = 33pp промяна. 100pp в WoW не е грешка, а пълна смяна на посока в малка група.

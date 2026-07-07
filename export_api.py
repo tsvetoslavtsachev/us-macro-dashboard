@@ -249,6 +249,14 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             "new_extreme_count": exec_row.new_extreme_count if exec_row else 0,
             "intra_divergences": intra_divs.get(lens, []),
         }
+        # П1в — инфлационният score е спрямо последното десетилетие (вкл. суржа
+        # 2021-23), НЕ спрямо целта 2%. Числата НЕ се пипат (scale fix = 2б).
+        if lens == "inflation":
+            lenses_out[lens]["score_caveat"] = (
+                "Здравето на инфлацията е спрямо последното десетилетие "
+                "(вкл. суржа 2021-23), не спрямо целта 2%. Score ~50 при ~3% core CPI "
+                "е артефакт на разширения 10г scale, не сигнал за здраве."
+            )
 
     # ── Top anomalies ───────────────────────────────────────────────────────
     top_anomalies = []
