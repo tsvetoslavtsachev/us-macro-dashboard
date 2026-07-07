@@ -746,6 +746,51 @@ def _render_cross_spreads(snapshot, today: date, history_years: int) -> str:
         parts.append("_PPICORE или CPILFESL липсват — pipeline lead-lag не може да се изчисли._")
 
     parts.append("")
+
+    # ═══════════════════════════════════════
+    # Растеж — коинцидентен синтез (CFNAI) — П2г
+    # ═══════════════════════════════════════
+    parts.append("### Растеж — коинцидентен синтез (CFNAI)")
+    parts.append("")
+
+    cfnai = _last_value(snapshot.get("CFNAI"))
+    cfnai_ma3 = _last_value(snapshot.get("CFNAIMA3"))
+    cfnai_date = _last_obs_date(snapshot.get("CFNAI"))
+
+    if cfnai is None and cfnai_ma3 is None:
+        parts.append("_CFNAI/CFNAIMA3 липсват в snapshot-а._")
+    else:
+        parts.append(
+            "Chicago Fed National Activity Index — 85-индикаторен **коинцидентен** "
+            "factor композит (0 = trend growth). Показва къде Е растежът сега, "
+            "не къде отива. Контекстен ред — не влиза в лещите/композита."
+        )
+        parts.append("")
+        parts.append("| Метрика | Стойност | Интерпретация |")
+        parts.append("|---|---|---|")
+        if cfnai is not None:
+            interp = (
+                "над trend growth" if cfnai > 0.2 else
+                "около trend growth" if cfnai > -0.2 else
+                "под trend growth"
+            )
+            d_str = f" ({cfnai_date.isoformat()})" if cfnai_date else ""
+            parts.append(f"| CFNAI (месечен){d_str} | {cfnai:+.2f} | {interp} (шумен месечен; чети MA3) |")
+        if cfnai_ma3 is not None:
+            dist = cfnai_ma3 - (-0.7)
+            interp = (
+                "**под recession прага −0.7** — исторически recession-probable" if cfnai_ma3 < -0.7 else
+                f"под trend, но {dist:+.2f} над recession прага (−0.7)" if cfnai_ma3 < 0 else
+                f"на/над trend growth · {dist:+.2f} над recession прага (−0.7)"
+            )
+            parts.append(f"| **CFNAIMA3** (3м MA) | {cfnai_ma3:+.2f} | {interp} |")
+        parts.append("")
+        parts.append(
+            "_Правило (честен исторически праг): `CFNAIMA3 < −0.7` → recession "
+            "probable — класическият Chicago Fed trigger. Коинцидентен, не изпреварващ._"
+        )
+
+    parts.append("")
     return "\n".join(parts)
 
 
