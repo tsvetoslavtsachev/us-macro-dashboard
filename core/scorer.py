@@ -183,31 +183,68 @@ def score_series(
         return {
             "name": name or series.name or "unknown",
             "score": 50.0, "health_z": 0.0, "percentile": 50.0, "z_score": 0.0,
+            "percentile_window": "пълна история", "z_raw": 0.0,
             "current_value": round(current_val, 4),
             "display_value": round(scored_val, 4), "display_is_pct": is_pct,
             "last_date": last_date, "yoy_change": _calc_yoy(series),
             "transform": transform, "polarity": _polarity_repr(polarity),
             "direction": "flat", "dev_sigma": 0.0, "severity": "норма",
             "invert": invert, "history_n": len(transformed),
+            "scale_fallback": False, "degenerate": True,
         }
 
     val, med, scale = stats
-    hz = _health_z(val, med, scale, polarity)
+
+    # ── Каноничен degenerate guard (единен US/EU/CN — O3 правило 4) ─────────────
+    # MAD=0 в 10-г. прозорец (административно пиннати серии: плато от еднакви
+    # котировки, напр. policy rate) → scale=0 → фалшиво „неутрално 50" при реален
+    # всеисторически екстремум. Fallback: норма от ПЪЛНАТА трансф. история; ако и тя
+    # е константа → degenerate (неутрално, но с изричен флаг). Огледало на china scorer.
+    win = _trailing_window(transformed, used_window)
+    scale_fallback = False
+    if (scale == 0 or np.isnan(scale)) and len(transformed) > len(win):
+        med_f = float(transformed.median())
+        mad_f = float((transformed - med_f).abs().median())
+        scale_f = 1.4826 * mad_f
+        if scale_f > 0 and not np.isnan(scale_f):
+            med, scale = med_f, scale_f
+            scale_fallback = True
+            win = transformed  # percentile-ът също минава на пълната история (честен етикет)
+    degenerate = bool(scale == 0 or np.isnan(scale))
+
+    if degenerate:
+        hz = 0.0            # без вариация дори в пълната история → неутрално (не U_BAND=73)
+        dev_sigma = 0.0
+    else:
+        hz = _health_z(val, med, scale, polarity)
+        dev_sigma = _dev_sigma(val, med, scale, polarity)  # магнитуд (item F)
+        if scale_fallback:
+            # Full-history MAD на пиннати серии е миниатюрен → козметично огромни z.
+            # Клип по display конвенцията ±6σ (CN scorer / US anomaly cap).
+            hz = float(np.clip(hz, -6.0, 6.0))
+            dev_sigma = float(np.clip(dev_sigma, -6.0, 6.0))
     score = round(50.0 * (1.0 + math.tanh(hz / TANH_SLOPE)), 1)
     direction = _health_direction(transformed, scored_val, med, scale, polarity)
-    dev_sigma = _dev_sigma(val, med, scale, polarity)  # магнитуд (item F)
     severity = severity_tier(dev_sigma)
 
+    # z_raw = суров (над/под медианата) робастен z — полярностно-агностичен (CN z_report
+    # семантика). z_score остава oriented (=health_z). O3 правило 5: едно име=едно значение.
+    z_raw = 0.0 if degenerate else (val - med) / scale
+    if scale_fallback and not degenerate:
+        z_raw = float(np.clip(z_raw, -6.0, 6.0))
+
     # Trailing percentile (на трансф. стойност в прозореца) — второстепенна прозрачност
-    win = _trailing_window(transformed, used_window)
     pct = round(percentile_rank(scored_val, win), 1)
+    percentile_window = "пълна история" if (scale_fallback or used_window != WINDOW_YEARS) else "10г"
 
     return {
         "name": name or series.name or "unknown",
         "score": score,
         "health_z": round(hz, 2),
         "percentile": pct,
-        "z_score": round(hz, 2),   # = health_z → сортиране по отдалеченост от нормата
+        "percentile_window": percentile_window,
+        "z_score": round(hz, 2),   # = health_z (oriented) → сортиране по отдалеченост от нормата
+        "z_raw": round(float(z_raw), 2),
         "current_value": round(current_val, 4),
         "display_value": round(scored_val, 4),
         "display_is_pct": is_pct,
@@ -220,6 +257,8 @@ def score_series(
         "severity": severity,
         "invert": invert,
         "history_n": len(win),
+        "scale_fallback": scale_fallback,
+        "degenerate": degenerate,
     }
 
 
@@ -247,7 +286,9 @@ def _empty_score(name: str) -> dict:
         "score": 50.0,
         "health_z": 0.0,
         "percentile": 50.0,
+        "percentile_window": "пълна история",
         "z_score": 0.0,
+        "z_raw": 0.0,
         "current_value": None,
         "display_value": None,
         "display_is_pct": False,
@@ -260,4 +301,6 @@ def _empty_score(name: str) -> dict:
         "severity": None,
         "invert": False,
         "history_n": 0,
+        "scale_fallback": False,
+        "degenerate": True,
     }

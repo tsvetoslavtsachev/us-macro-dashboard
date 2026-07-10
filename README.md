@@ -241,6 +241,11 @@ This is not an investment product, not financial advice, not a trading signal ge
 
 Data sources are FRED (primary) и ISM (optional via Firecrawl); no equity, options, or crypto feeds. Extend at will — the series catalog in `catalog/series.py` is the single source of truth for new data.
 
+## O3 конвенция (Вълна 1, 2026-07)
+
+- **Каноничен degenerate guard** (единен US/EU/CN): MAD=0 в 10-г. прозорец → fallback към пълната история + клип ±6σ + флагове `scale_fallback`/`degenerate`. Спира фалшивото „неутрално 50" при административно пиннати серии на екстремум.
+- Всяко число носи прозореца си в **`percentile_window`** ("10г" / "пълна история"); суровият z е в **`z_raw`** (полето `z_score` остава полярностно-ориентирано). Briefing канонът е 10г (`HISTORY_YEARS=10`).
+
 ## License
 
 [MIT](LICENSE).
