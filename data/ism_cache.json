@@ -3,7 +3,7 @@
     "indicator": "manufacturing_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/june/",
-      "last_fetched": "2026-07-03T17:07:27.355138",
+      "last_fetched": "2026-07-10T17:38:02.945841",
       "month": "June 2026",
       "headline": 53.3,
       "subindices": {
@@ -967,21 +967,21 @@
   "services_pmi": {
     "indicator": "services_pmi",
     "current": {
-      "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/may/",
-      "last_fetched": "2026-07-03T17:07:28.517275",
-      "month": "May 2026",
-      "headline": 54.5,
+      "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/june/",
+      "last_fetched": "2026-07-10T17:38:03.982770",
+      "month": "June 2026",
+      "headline": 54.0,
       "subindices": {
-        "New Orders": 57.3,
-        "Supplier Deliveries": 55.2,
-        "Inventories": 62.5,
+        "New Orders": 55.1,
+        "Supplier Deliveries": 54.4,
+        "Inventories": 51.2,
+        "Prices": 67.7,
+        "Backlog of Orders": 54.9,
+        "New Export Orders": 50.4,
+        "Business Activity": 55.4,
+        "Employment": 51.2,
         "Imports": 51.1,
-        "Employment": 47.9,
-        "Prices": 71.3,
-        "Backlog of Orders": 51.3,
-        "New Export Orders": 50.0,
-        "Business Activity": 57.7,
-        "Inventory Sentiment": 55.2
+        "Inventory Sentiment": 52.6
       },
       "parse_quality": "ok",
       "missing_subindices": []
@@ -1333,7 +1333,8 @@
       "1997-09-01": 56.2,
       "1997-08-01": 62.0,
       "1997-07-01": 56.7,
-      "2026-05-01": 54.5
+      "2026-05-01": 54.5,
+      "2026-06-01": 54.0
     },
     "history_source": "bloomberg_csv",
     "history_imported": "2026-05-19T23:13:23.352969"
