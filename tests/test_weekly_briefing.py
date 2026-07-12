@@ -144,13 +144,25 @@ class TestStructure:
 
 class TestSelfContainment:
     def test_no_external_urls(self, tmp_output):
-        """Никакви CDN/http(s) references — briefing трябва да се отваря offline."""
+        """Никакви CDN/http(s) РЕСУРСИ — briefing трябва да се отваря offline.
+
+        Изключения (М25 брифинги↔macro-web): чистите навигационни <a href>
+        котви не са ресурси и не пречат на offline отварянето. Всичко
+        останало с http(s):// остава забранено.
+        """
         snapshot = {k: trend_up() for k in SERIES_CATALOG.keys()}
         path = generate_weekly_briefing(snapshot, str(tmp_output))
         content = Path(path).read_text(encoding="utf-8")
-        # Allow-list: никакво http:// или https:// не трябва да има
-        assert "http://" not in content
-        assert "https://" not in content
+        allowed_anchors = (
+            "http://localhost:8765/#US",
+            "https://tsvetoslavtsachev.github.io/macro-web-dashboard/#US",
+            "https://tsvetoslavtsachev.github.io/treasury-funding-radar/",
+        )
+        stripped = content
+        for url in allowed_anchors:
+            stripped = stripped.replace(url, "")
+        assert "http://" not in stripped
+        assert "https://" not in stripped
 
     def test_no_script_tags(self, tmp_output):
         """Без JS — briefing е чист static."""
