@@ -347,6 +347,15 @@ def main_briefing(args) -> str:
     print(f"  ✅ {explorer_path.name} + archive {explorer_dated.name}"
           f" ({explorer_path.stat().st_size // 1024} KB)")
 
+    # ─── Landing index.html (China-style: копие на най-новия briefing) ─────
+    # Локалният сървър на output/ (порт 8773) показва това като входна страница —
+    # иначе браузърът дава гол directory listing. Копираме deep briefing-а, защото
+    # той носи линковете към explorer.html. Опреснява се при всеки нов briefing,
+    # за да не гние. (Production Pages ползва briefing_quick_ за index — виж CI.)
+    index_path = output_dir / "index.html"
+    index_path.write_bytes(briefing_path.read_bytes())
+    print(f"  ✅ index.html ← {briefing_path.name}")
+
     # ─── Browser ──────────────────────────────────────────────────
     if not args.no_browser:
         abs_path = briefing_path.resolve()

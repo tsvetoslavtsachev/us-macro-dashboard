@@ -83,14 +83,16 @@ jobs:
       - name: Prepare Pages site
         run: |
           mkdir -p _site
-          # index = latest quick (China-style scoreboard за 30-сек поглед)
-          LATEST_QUICK=$(ls -1t output/briefing_quick_*.html 2>/dev/null | head -n1)
-          if [ -n "$LATEST_QUICK" ]; then
-            cp "$LATEST_QUICK" _site/index.html
+          # М25: входът = DEEP брифингът (седмичното четиво — разказ, контекст),
+          # НЕ quick scoreboard-ът (той дублира живата снимка на macro-web).
+          LATEST_DEEP=$(ls -1t output/briefing_*.html | grep -v briefing_quick | head -n1)
+          if [ -n "$LATEST_DEEP" ]; then
+            cp "$LATEST_DEEP" _site/index.html
           else
-            # fallback ако quick не е генериран — index = latest deep
-            cp $(ls -1t output/briefing_*.html | grep -v briefing_quick | head -n1) _site/index.html
+            # fallback ако deep липсва — index = latest quick (вместо гол listing)
+            cp "$(ls -1t output/briefing_quick_*.html 2>/dev/null | head -n1)" _site/index.html
           fi
+          # quick продължава да се генерира и копира долу за history, но не е вход.
           # копирай и двата вида briefings (deep + quick) за history
           cp output/briefing_*.html _site/ 2>/dev/null || true
           cp output/briefing_context_*.md _site/ 2>/dev/null || true
