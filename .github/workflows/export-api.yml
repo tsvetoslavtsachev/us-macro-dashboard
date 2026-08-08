@@ -1,10 +1,17 @@
 name: Export API JSON (Weekly)
 
-# Изпълнява се всяка събота в 07:00 UTC (09:00 Sofia/EET)
+# Изпълнява се всяка събота в 02:17 UTC (05:17 Sofia/EEST).
+# Защо толкова рано: сателитът (macro-satellite daily-collect, 04:00 UTC) чете
+# output/api/macro_state.json от main — export-ът трябва да е committed ПРЕДИ това,
+# за да влезе петъчният принт (напр. NFP, петък 12:30 UTC във FRED) в съботния
+# state.json преди съботния ритуал (~07:30 UTC). Старият 07:00 крон комитваше
+# 07:52-09:08 UTC — след билда на сателита (наблюдавани commit времена 07-08.2026).
+# Нечетни минути: кръглите часове на GitHub scheduler-а чакат 1.5-3 ч опашка
+# (прецедентът на cot-monitor, схема '23 6 * * 6').
 # Може да се стартира и ръчно от GitHub UI: Actions → Export API JSON → Run workflow
 on:
   schedule:
-    - cron: '0 7 * * 6'
+    - cron: '17 2 * * 6'
   workflow_dispatch:
     inputs:
       refresh:
