@@ -3,7 +3,7 @@
     "indicator": "manufacturing_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/july/",
-      "last_fetched": "2026-08-21T16:16:24.114085",
+      "last_fetched": "2026-08-29T00:10:43.966604",
       "month": "July 2026",
       "headline": 55.6,
       "subindices": {
@@ -969,8 +969,8 @@
     "indicator": "services_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/july/",
-      "last_fetched": "2026-08-21T16:16:25.661709",
-      "month": "June 2026",
+      "last_fetched": "2026-08-29T00:10:55.999337",
+      "month": "July 2026",
       "headline": 54.1,
       "subindices": {
         "New Orders": 57.2,
@@ -1335,7 +1335,8 @@
       "1997-08-01": 62.0,
       "1997-07-01": 56.7,
       "2026-05-01": 54.5,
-      "2026-06-01": 54.1
+      "2026-06-01": 54.1,
+      "2026-07-01": 54.1
     },
     "history_source": "bloomberg_csv",
     "history_imported": "2026-05-19T23:13:23.352969"
