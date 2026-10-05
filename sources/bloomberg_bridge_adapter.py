@@ -22,7 +22,7 @@ USAGE в catalog:
     "EA_INFL_SWAP_5Y": {
         "source": "bloomberg_bridge",
         "id": "EA_INFL_SWAP_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_INFL_SWAP_5Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/EA_INFL_SWAP_5Y.parquet",
         ...
     }
 

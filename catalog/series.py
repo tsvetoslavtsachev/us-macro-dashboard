@@ -917,7 +917,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "NAHB_HMI": {
         "source": "bloomberg_bridge",
         "id": "NAHB_HMI",
-        "parquet_path": "../../vrm-data-archive/parquet/NAHB_HMI.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/NAHB_HMI.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "NAHB/Wells Fargo Housing Market Index (builder sentiment)",
@@ -940,7 +940,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "MBA_PURCHASE_IDX": {
         "source": "bloomberg_bridge",
         "id": "MBA_PURCHASE_IDX",
-        "parquet_path": "../../vrm-data-archive/parquet/MBA_PURCHASE_IDX.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/MBA_PURCHASE_IDX.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "MBA Седмични молби за покупка на имот",
@@ -958,7 +958,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "MBA_REFINANCE_IDX": {
         "source": "bloomberg_bridge",
         "id": "MBA_REFINANCE_IDX",
-        "parquet_path": "../../vrm-data-archive/parquet/MBA_REFINANCE_IDX.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/MBA_REFINANCE_IDX.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "MBA Седмични молби за рефинансиране",
@@ -981,7 +981,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "NAR_PHSI": {
         "source": "bloomberg_bridge",
         "id": "NAR_PHSI",
-        "parquet_path": "../../vrm-data-archive/parquet/NAR_PHSI.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/NAR_PHSI.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "NAR Pending Home Sales Index",
@@ -1006,7 +1006,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_PMI_COMPOSITE": {
         "source": "bloomberg_bridge",
         "id": "US_PMI_COMPOSITE",
-        "parquet_path": "../../vrm-data-archive/parquet/US_PMI_COMPOSITE.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_PMI_COMPOSITE.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "S&P Global US Composite PMI",
@@ -1024,7 +1024,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_PMI_MFG": {
         "source": "bloomberg_bridge",
         "id": "US_PMI_MFG",
-        "parquet_path": "../../vrm-data-archive/parquet/US_PMI_MFG.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_PMI_MFG.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "S&P Global US Manufacturing PMI",
@@ -1042,7 +1042,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_PMI_SVCS": {
         "source": "bloomberg_bridge",
         "id": "US_PMI_SVCS",
-        "parquet_path": "../../vrm-data-archive/parquet/US_PMI_SVCS.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_PMI_SVCS.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "S&P Global US Services PMI",
@@ -1068,7 +1068,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_SOFR_OIS_3M": {
         "source": "bloomberg_bridge",
         "id": "US_SOFR_OIS_3M",
-        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_3M.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_SOFR_OIS_3M.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "USD SOFR OIS 3M",
@@ -1086,7 +1086,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_SOFR_OIS_6M": {
         "source": "bloomberg_bridge",
         "id": "US_SOFR_OIS_6M",
-        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_6M.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_SOFR_OIS_6M.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "USD SOFR OIS 6M",
@@ -1104,7 +1104,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_SOFR_OIS_1Y": {
         "source": "bloomberg_bridge",
         "id": "US_SOFR_OIS_1Y",
-        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_1Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_SOFR_OIS_1Y.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "USD SOFR OIS 1Y",
@@ -1122,7 +1122,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "US_SOFR_OIS_2Y": {
         "source": "bloomberg_bridge",
         "id": "US_SOFR_OIS_2Y",
-        "parquet_path": "../../vrm-data-archive/parquet/US_SOFR_OIS_2Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/US_SOFR_OIS_2Y.parquet",
         "license_class": "source_public",
         "region": "US",
         "name_bg": "USD SOFR OIS 2Y",
