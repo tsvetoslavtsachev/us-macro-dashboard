@@ -87,7 +87,7 @@ CHART_SERIES = {
         "HY_OAS", "IG_OAS", "NFCI", "STLFSI",
         "M2", "FED_BS", "TOTAL_RESERVES",
         "C_AND_I_LOANS", "CC_DELINQUENCY",
-        # Bloomberg bridge — SOFR-OIS спредове (funding stress)
+        # Bloomberg bridge — SOFR OIS, нива (заложената лихва по хоризонти), не спредове
         "US_SOFR_OIS_3M", "US_SOFR_OIS_6M", "US_SOFR_OIS_1Y", "US_SOFR_OIS_2Y",
     ],
     "housing": [
