@@ -749,6 +749,11 @@ def _parse_args():
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
+        "--check-fresh",
+        action="store_true",
+        help="Проверка за застинал локален FRED кеш; exit 1, ако е над 14 дни.",
+    )
+    mode.add_argument(
         "--status",
         action="store_true",
         help="Phase 1: Генерирай Data Status Screen вместо legacy dashboard.",
@@ -869,6 +874,13 @@ def _parse_args():
 
 if __name__ == "__main__":
     args = _parse_args()
+    from export.cache_age import stale_caches, format_warning
+    _stale = stale_caches(BASE_DIR / "data")
+    if args.check_fresh:
+        print(format_warning(_stale) or "✓ Локалният кеш е пресен (до 14 дни).")
+        sys.exit(1 if _stale else 0)
+    if _stale and not (args.refresh or args.refresh_only):
+        print(format_warning(_stale) + "\n")
     if args.refresh_only:
         main_refresh_only(args)
     elif args.export_context:
