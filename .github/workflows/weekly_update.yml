@@ -49,7 +49,11 @@ jobs:
       - name: Restore data cache
         uses: actions/cache@v4
         with:
-          path: data/cache_*.json
+          # Само некомитнатите кешове. Старият шаблон data/cache_*.json не хващаше
+          # нищо; data/*_cache.json би газил комитнатите ISM/CB/MBA/NAHB/NAR (ЕВРО1, 09.10.2026).
+          path: |
+            data/fred_cache.json
+            data/funding_state_cache.json
           key: ${{ steps.cache-key.outputs.key }}
           restore-keys: |
             us-macro-cache-
@@ -62,10 +66,12 @@ jobs:
       - name: Комитнатият мост бие кеша
         run: git checkout -- data/bloomberg_bridge.json
 
-      - name: Smart refresh stale series
+      # Принудително: с жив кеш умният режим би пропуснал месечни серии до TTL
+      # и свежите данни биха закъснели със седмица. Кешът е само резерва, ако FRED падне.
+      - name: Force refresh all series (cache = fallback)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python run.py --refresh-only
+        run: python run.py --refresh-only --refresh
 
       - name: Generate HTML briefing
         env:
