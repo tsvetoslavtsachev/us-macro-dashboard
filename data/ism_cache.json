@@ -3,7 +3,7 @@
     "indicator": "manufacturing_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/september/",
-      "last_fetched": "2026-10-02T20:11:18.250645",
+      "last_fetched": "2026-10-09T20:22:21.205029",
       "month": "September 2026",
       "headline": 54.5,
       "subindices": {
@@ -970,21 +970,21 @@
   "services_pmi": {
     "indicator": "services_pmi",
     "current": {
-      "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/august/",
-      "last_fetched": "2026-10-02T20:11:19.392859",
-      "month": "August 2026",
-      "headline": 55.4,
+      "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/september/",
+      "last_fetched": "2026-10-09T20:22:22.170288",
+      "month": "September 2025",
+      "headline": 54.9,
       "subindices": {
-        "New Orders": 60.9,
-        "Supplier Deliveries": 51.3,
-        "Inventories": 56.7,
-        "Prices": 72.6,
-        "Backlog of Orders": 55.6,
-        "New Export Orders": 56.3,
-        "Employment": 47.8,
-        "Business Activity": 61.7,
-        "Imports": 56.3,
-        "Inventory Sentiment": 54.1
+        "New Orders": 59.8,
+        "Supplier Deliveries": 53.2,
+        "Inventories": 57.8,
+        "Prices": 74.0,
+        "Backlog of Orders": 56.6,
+        "New Export Orders": 46.9,
+        "Employment": 50.1,
+        "Business Activity": 56.5,
+        "Imports": 52.9,
+        "Inventory Sentiment": 51.7
       },
       "parse_quality": "ok",
       "missing_subindices": []
@@ -997,7 +997,7 @@
       "2025-12-01": 53.8,
       "2025-11-01": 52.4,
       "2025-10-01": 52.0,
-      "2025-09-01": 50.3,
+      "2025-09-01": 54.9,
       "2025-08-01": 51.9,
       "2025-07-01": 50.5,
       "2025-06-01": 50.8,
