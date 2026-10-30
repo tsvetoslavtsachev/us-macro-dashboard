@@ -832,13 +832,13 @@
     "indicator": "cb_cci",
     "current": {
       "url_fetched": "https://www.conference-board.org/topics/consumer-confidence",
-      "last_fetched": "2026-10-23T19:34:46.461862",
-      "month": "September 2026",
-      "headline": 81.9,
-      "mom_change": 6.7,
+      "last_fetched": "2026-10-30T20:12:28.405871",
+      "month": "October 2026",
+      "headline": 91.7,
+      "mom_change": 7.5,
       "subcomponents": {
-        "Present Situation": 109.3,
-        "Expectations": 63.6
+        "Present Situation": 120.4,
+        "Expectations": 72.6
       },
       "parse_quality": "ok",
       "missing_subcomponents": []
@@ -1495,7 +1495,8 @@
       "2026-06-01": 91.2,
       "2026-07-01": 90.8,
       "2026-08-01": 89.4,
-      "2026-09-01": 81.9
+      "2026-09-01": 81.9,
+      "2026-10-01": 91.7
     },
     "history_source": "bloomberg_csv",
     "history_imported": "2026-05-19T23:13:14.316460"

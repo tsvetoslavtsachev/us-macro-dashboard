@@ -3,7 +3,7 @@
     "indicator": "manufacturing_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/september/",
-      "last_fetched": "2026-10-23T19:34:44.575616",
+      "last_fetched": "2026-10-30T20:12:26.470321",
       "month": "September 2026",
       "headline": 54.5,
       "subindices": {
@@ -971,7 +971,7 @@
     "indicator": "services_pmi",
     "current": {
       "url_fetched": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/services/september/",
-      "last_fetched": "2026-10-23T19:34:45.447920",
+      "last_fetched": "2026-10-30T20:12:27.291966",
       "month": "September 2025",
       "headline": 54.9,
       "subindices": {
