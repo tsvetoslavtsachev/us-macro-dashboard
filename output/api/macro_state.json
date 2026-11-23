@@ -1,7 +1,7 @@
 {
   "region": "US",
   "as_of_date": "2026-11-23",
-  "generated_at": "2026-11-23T07:35:49.845579Z",
+  "generated_at": "2026-11-23T21:10:43.832413Z",
   "executive_summary": {
     "regime_key": "policy_dilemma",
     "regime_label_bg": "Policy dilemma",
@@ -9,7 +9,7 @@
     "narrative": "Policy dilemma — labor market е loose, но инфлацията remains hot. Fed е заклещен между двата мандата. Най-отклонена леща: Инфлация и цени — breadth 88% (разширяване), 2 аномалии, 1 нови екстремума. Expectations също нагоре — de-anchoring в ход, рискът ескалира. За наблюдение следващия релиз: US_PMI_COMPOSITE, US_PMI_SVCS, LABOR_SHARE_NBS (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: US_PMI_COMPOSITE z=+2.60 · NEW-5Y-MAX",
-      "4 нови екстремуми в top-5 (lookback 5г.)",
+      "4 нови екстремуми в top-6 (lookback 5г.)",
       "Активни двойки: Stagflation test=a_down_b_up; Inflation anchoring=both_up; Credit × Policy=both_up"
     ],
     "primary_driver": "stagflation_test",
@@ -176,13 +176,55 @@
       ]
     },
     "growth": {
-      "score": 49.3,
-      "health_z": -0.029,
+      "score": 48.4,
+      "health_z": -0.063,
       "direction": "mixed",
-      "breadth_pct": 56.0,
+      "breadth_pct": 48.0,
       "anomalies_count": 3,
       "new_extreme_count": 3,
       "intra_divergences": [
+        {
+          "lens": "growth",
+          "group_a": "business_sentiment",
+          "group_b": "diffusion_indices",
+          "breadth_a": 0.0,
+          "breadth_b": 0.8,
+          "diff": -0.8,
+          "interpretation": "diffusion_indices е по-силна (80%) отколкото business_sentiment (0%) — разминаване +80%.",
+          "name_bg": "business_sentiment vs diffusion_indices",
+          "pair_id": "growth__business_sentiment__vs__diffusion_indices",
+          "slot_a_label": "business_sentiment",
+          "slot_b_label": "diffusion_indices",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "growth",
+          "group_a": "business_sentiment",
+          "group_b": "hard_activity",
+          "breadth_a": 0.0,
+          "breadth_b": 0.8,
+          "diff": -0.8,
+          "interpretation": "hard_activity е по-силна (80%) отколкото business_sentiment (0%) — разминаване +80%.",
+          "name_bg": "business_sentiment vs hard_activity",
+          "pair_id": "growth__business_sentiment__vs__hard_activity",
+          "slot_a_label": "business_sentiment",
+          "slot_b_label": "hard_activity",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "growth",
+          "group_a": "business_sentiment",
+          "group_b": "housing_supply",
+          "breadth_a": 0.0,
+          "breadth_b": 0.5,
+          "diff": -0.5,
+          "interpretation": "housing_supply е по-силна (50%) отколкото business_sentiment (0%) — разминаване +50%.",
+          "name_bg": "business_sentiment vs housing_supply",
+          "pair_id": "growth__business_sentiment__vs__housing_supply",
+          "slot_a_label": "business_sentiment",
+          "slot_b_label": "housing_supply",
+          "state": "a_down_b_up"
+        },
         {
           "lens": "growth",
           "group_a": "consumer_sentiment",
@@ -323,11 +365,11 @@
       "score_caveat": "Здравето на инфлацията е спрямо последното десетилетие (вкл. суржа 2021-23), не спрямо целта 2%. Score ~50 при ~3% core CPI е артефакт на разширения 10г scale, не сигнал за здраве."
     },
     "liquidity": {
-      "score": 41.5,
-      "health_z": -0.342,
+      "score": 38.9,
+      "health_z": -0.453,
       "direction": "mixed",
       "breadth_pct": 31.6,
-      "anomalies_count": 0,
+      "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": [
         {
@@ -477,6 +519,21 @@
       "narrative_hint": "Производствени цени → consumer prices с 1-3 месечен lag. Водещ за CPI при трендови промени."
     },
     {
+      "series_id": "HY_OAS",
+      "name_bg": "High Yield спред (HY OAS)",
+      "lens": [
+        "liquidity"
+      ],
+      "peer_group": "credit_spreads",
+      "z_score": 2.377,
+      "direction": "up",
+      "current_value": 3.76,
+      "last_date": "2026-11-20",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Risk premium на junk bonds. Spikes предхождат equity volatility и рецесионен стрес. < 300 bps = risk-on; > 800 bps = distress."
+    },
+    {
       "series_id": "US_PMI_SVCS",
       "name_bg": "S&P Global US Services PMI",
       "lens": [
@@ -620,6 +677,17 @@
       "percentile": null,
       "z_score": 2.541,
       "direction": "up"
+    },
+    {
+      "series_id": "HY_OAS",
+      "name_bg": "High Yield спред (HY OAS)",
+      "lens": [
+        "liquidity"
+      ],
+      "signal_strength": "medium",
+      "percentile": null,
+      "z_score": 2.377,
+      "direction": "insufficient"
     },
     {
       "series_id": "LABOR_SHARE_NBS",
