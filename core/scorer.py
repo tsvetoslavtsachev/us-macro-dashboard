@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 from typing import Any, Optional
 
-from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods, severity_tier
+from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods, momentum_signal, severity_tier
 
 # ── константи (синхронни с analysis/health.py + catalog/polarity.py) ──────────
 TANH_SLOPE = 2.0       # score = 50·(1+tanh(z_h/SLOPE)); ±2σ ≈ 88/12
@@ -135,6 +135,7 @@ def score_series(
     *,
     transform: str = "level",
     polarity: Any = None,
+    scoring_mode: str = "level",
     window_years: int = WINDOW_YEARS,
     min_obs: int = MIN_OBS,
 ) -> dict:
@@ -172,11 +173,16 @@ def score_series(
         else str(series.index[-1].date())
     )
 
-    # Робастна норма спрямо плъзгащ прозорец; fallback → пълна трансф. история
-    stats = robust_stats_latest(transformed, window_years=window_years, min_obs=min_obs)
+    # Базис за робастната норма: момент (изгладен Δ) за external лещата (scoring_mode=
+    # "momentum", огледало на EU), иначе нивото. Дисплеят (scored_val/percentile) си
+    # остава трансформираната серия и в двата режима.
+    score_basis = momentum_signal(transformed) if scoring_mode == "momentum" else transformed
+
+    # Робастна норма спрямо плъзгащ прозорец; fallback → пълна история на базиса
+    stats = robust_stats_latest(score_basis, window_years=window_years, min_obs=min_obs)
     used_window = window_years
     if stats is None:
-        stats = robust_stats_latest(transformed, window_years=200, min_obs=12)
+        stats = robust_stats_latest(score_basis, window_years=200, min_obs=12)
         used_window = 200
 
     if stats is None:  # твърде къса дори за fallback → неутрално
@@ -202,9 +208,10 @@ def score_series(
     # е константа → degenerate (неутрално, но с изричен флаг). Огледало на china scorer.
     win = _trailing_window(transformed, used_window)
     scale_fallback = False
-    if (scale == 0 or np.isnan(scale)) and len(transformed) > len(win):
-        med_f = float(transformed.median())
-        mad_f = float((transformed - med_f).abs().median())
+    basis_win = _trailing_window(score_basis, used_window)
+    if (scale == 0 or np.isnan(scale)) and len(score_basis) > len(basis_win):
+        med_f = float(score_basis.median())
+        mad_f = float((score_basis - med_f).abs().median())
         scale_f = 1.4826 * mad_f
         if scale_f > 0 and not np.isnan(scale_f):
             med, scale = med_f, scale_f
@@ -224,7 +231,9 @@ def score_series(
             hz = float(np.clip(hz, -6.0, 6.0))
             dev_sigma = float(np.clip(dev_sigma, -6.0, 6.0))
     score = round(50.0 * (1.0 + math.tanh(hz / TANH_SLOPE)), 1)
-    direction = _health_direction(transformed, scored_val, med, scale, polarity)
+    # Посоката е на същия базис като нормата (при momentum: на изгладения Δ), за да не
+    # се сравнява ниво с медианата и разброса на промените.
+    direction = _health_direction(score_basis, val, med, scale, polarity)
     severity = severity_tier(dev_sigma)
 
     # z_raw = суров (над/под медианата) робастен z — полярностно-агностичен (CN z_report
@@ -252,6 +261,7 @@ def score_series(
         "yoy_change": _calc_yoy(series),
         "transform": transform,
         "polarity": _polarity_repr(polarity),
+        "scoring_mode": scoring_mode,
         "direction": direction,
         "dev_sigma": round(dev_sigma, 2),
         "severity": severity,

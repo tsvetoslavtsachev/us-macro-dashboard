@@ -23,6 +23,10 @@ ALLOWED_LENSES = {"labor", "growth", "inflation", "liquidity", "housing", "exter
 ALLOWED_TRANSFORMS = {"level", "yoy_pct", "mom_pct", "z_score", "first_diff"}
 ALLOWED_TAGS = {"non_consensus", "ai_exposure", "structural"}
 ALLOWED_SCHEDULES = {"daily", "weekly", "monthly", "quarterly", "annually"}
+# scoring_mode (опционално поле; липсва → "level"), огледало на EU:
+#   "level"    — робастен z спрямо 10-г. плъзгаща норма (ниво спрямо нормата; default)
+#   "momentum" — робастен z на изгладения Δ (рязка промяна спрямо нормата; external лещата)
+ALLOWED_SCORING_MODES = {"level", "momentum"}
 
 
 # ============================================================
@@ -1852,7 +1856,9 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "Survey-based, базиран на 1985=100. По-correlated с retail spending от U-Mich (UMCSENT). 2 sub-indices: Present Situation (current conditions) + Expectations (forward 6m). Spread между двете е recession signal.",
     },
     # ── EXTERNAL и FISCAL (ПРОЛЕТР4, 26.11.2026, реш. Ц. „Да, за влизане“) ──────────
-    # Само за показване: лещите external и fiscal НЕ са в LENSES на export_api, както housing.
+    # external е в оценката от ПРОЛЕТР4С1 (26.11.2026, реш. Ц. „Да, по препоръките ти“):
+    # оценява се по рязката промяна (scoring_mode="momentum", като external на EU), посоки U/U.
+    # fiscal остава само за показване (извън оценката, както housing).
     "BOPGSTB": {
         "source": "fred",
         "id": "BOPGSTB",
@@ -1863,6 +1869,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "external_trade",
         "tags": [],
         "transform": "level",
+        "scoring_mode": "momentum",
         "historical_start": "1992-01-01",
         "release_schedule": "monthly",
         "typical_release": "about_35_days_after_month",
@@ -1879,6 +1886,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "external_trade",
         "tags": [],
         "transform": "yoy_pct",
+        "scoring_mode": "momentum",
         "historical_start": "1992-01-01",
         "release_schedule": "monthly",
         "typical_release": "about_35_days_after_month",
@@ -1895,6 +1903,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "external_fx",
         "tags": [],
         "transform": "yoy_pct",
+        "scoring_mode": "momentum",
         "historical_start": "2006-01-02",
         "release_schedule": "weekly",
         "typical_release": "daily_aggregated",
@@ -2124,6 +2133,8 @@ def validate_catalog() -> list[str]:
         for tag in meta["tags"]:
             if tag not in ALLOWED_TAGS:
                 errors.append(f"{key}: невалиден tag '{tag}'")
+        if meta.get("scoring_mode", "level") not in ALLOWED_SCORING_MODES:
+            errors.append(f"{key}: невалиден scoring_mode '{meta.get('scoring_mode')}'")
         if not isinstance(meta["revision_prone"], bool):
             errors.append(f"{key}: revision_prone трябва да е bool")
 

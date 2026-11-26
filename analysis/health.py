@@ -23,7 +23,7 @@ import pandas as pd
 
 from catalog.series import series_by_lens, ALLOWED_LENSES
 from catalog.polarity import polarity_for, peer_group_weight, U_BAND
-from core.primitives import apply_transform, robust_stats_latest
+from core.primitives import apply_transform, robust_stats_latest, momentum_signal
 
 WINDOW_YEARS = 10
 MIN_OBS = 36          # ≥3 г. история в прозореца, иначе серията е "insufficient"
@@ -35,9 +35,16 @@ def series_health_z(
     raw: pd.Series,
     transform: str,
     polarity: Any,
+    scoring_mode: str = "level",
 ) -> Optional[float]:
-    """Сурова серия → health-z (по-високо = по-здраво), или None ако недостатъчно данни."""
+    """Сурова серия → health-z (по-високо = по-здраво), или None ако недостатъчно данни.
+
+    scoring_mode="momentum" (external леща, като EU) → z-ва изгладения Δ (рязка
+    промяна спрямо нормата), не нивото. Иначе (default) → ниво спрямо 10-г. норма.
+    """
     s = apply_transform(raw, transform)
+    if scoring_mode == "momentum":
+        s = momentum_signal(s)
     stats = robust_stats_latest(s, window_years=WINDOW_YEARS, min_obs=MIN_OBS)
     if stats is None:
         return None
@@ -76,7 +83,8 @@ def lens_health(lens: str, snapshot: dict[str, pd.Series]) -> dict:
     for entry in series_by_lens(lens):
         pg = entry.get("peer_group")
         if pg:
-            by_pg[pg].append((entry["_key"], entry.get("transform", "level")))
+            by_pg[pg].append((entry["_key"], entry.get("transform", "level"),
+                              entry.get("scoring_mode", "level")))
 
     pg_out: list[dict] = []
     pg_zs: list[tuple[float, float]] = []   # (z, weight)
@@ -85,11 +93,11 @@ def lens_health(lens: str, snapshot: dict[str, pd.Series]) -> dict:
     for pg_name in sorted(by_pg.keys()):
         members = by_pg[pg_name]
         zs: list[float] = []
-        for key, transform in members:
+        for key, transform, scoring_mode in members:
             s = snapshot.get(key)
             if s is None or s.dropna().empty:
                 continue
-            zh = series_health_z(s, transform, polarity_for(key, lens))
+            zh = series_health_z(s, transform, polarity_for(key, lens), scoring_mode)
             if zh is None or (isinstance(zh, float) and math.isnan(zh)):
                 continue
             zs.append(zh)
