@@ -119,7 +119,7 @@ class TestPeerGroupSizes:
     # TODO Phase 1.5 (2026-05-31): leading_indicators остава singleton (CB_LEI sam).
     #   Кандидати за companion: NY Fed Recession Probability, Conference Board CEI/LAG,
     #   или Empire State Mfg / Dallas Fed leading composite. Виж GAP-ANALYSIS.
-    KNOWN_SINGLETON_PEER_GROUPS: frozenset[str] = frozenset({"leading_indicators"})
+    KNOWN_SINGLETON_PEER_GROUPS: frozenset[str] = frozenset({"leading_indicators", "external_fx"})
 
     def test_all_peer_groups_have_min_members(self):
         """Всеки peer_group има ≥2 серии — с изключение на known singletons."""

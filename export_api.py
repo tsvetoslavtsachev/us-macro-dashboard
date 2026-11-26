@@ -56,6 +56,8 @@ LENSES = ["labor", "growth", "inflation", "liquidity"]
 # Избрани по важност за всяка леща
 CHART_SERIES = {
     "labor": [
+        # ПРОЛЕТР4 (26.11.2026, реш. Ц.): каталожни, вече в оценката, досега непоказвани
+        "IC4WSA",
         # Headline / широки
         "UNRATE", "U6RATE", "EMRATIO", "CIVPART", "UEMPMEAN",
         "PAYEMS", "USPRIV",
@@ -68,6 +70,8 @@ CHART_SERIES = {
         "AHE", "ECIWAG", "AWHAETP",
     ],
     "inflation": [
+        # ПРОЛЕТР4 (26.11.2026, реш. Ц.): каталожни, вече в оценката, досега непоказвани
+        "BREAKEVEN_5Y5Y",
         "CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE",
         "PPIFIS", "PPICORE",
         "CPI_SHELTER", "CPI_SERVICES", "CPI_GOODS",
@@ -75,6 +79,8 @@ CHART_SERIES = {
         "BREAKEVEN_10Y", "MICH_INFL_1Y",
     ],
     "growth": [
+        # ПРОЛЕТР4 (26.11.2026, реш. Ц.): каталожни, вече в оценката, досега непоказвани
+        "GDPC1", "PCEC96",
         "INDPRO", "RSXFS", "DGORDER",
         "UMCSENT", "CFNAIMA3", "PHILLY_FED", "PSAVERT",
         # External (ISM, Conference Board) + bloomberg PMI — долени в main()
@@ -98,7 +104,12 @@ CHART_SERIES = {
         "PERMIT", "HOUST",
         # Bloomberg bridge — sentiment/activity
         "NAHB_HMI", "MBA_PURCHASE_IDX", "MBA_REFINANCE_IDX", "NAR_PHSI",
+        # ПРОЛЕТР4 (26.11.2026, реш. Ц.): каталожни, вече в оценката, досега непоказвани
+        "HSN1F", "MORTGAGE30US",
     ],
+    # ПРОЛЕТР4 (26.11.2026, реш. Ц.): само за показване; external и fiscal не са в LENSES
+    "external": ["BOPGSTB", "BOPTEXP", "USD_BROAD"],
+    "fiscal": ["FED_DEFICIT", "FED_DEBT_GDP", "FED_INTEREST"],
 }
 
 # Всички chart серии в един flat set
