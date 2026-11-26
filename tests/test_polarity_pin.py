@@ -39,6 +39,12 @@ def _diff(actual: dict, expected: dict) -> dict:
 
 
 EXPECTED_POLARITY = {'AHE': 1,
+ 'BOPGSTB': ('U', 'self'),
+ 'BOPTEXP': 1,
+ 'USD_BROAD': ('U', 'self'),
+ 'FED_DEFICIT': 1,
+ 'FED_DEBT_GDP': -1,
+ 'FED_INTEREST': -1,
  'AWHAETP': 1,
  'AWHMAN': 1,
  'AWOTMAN': 1,
