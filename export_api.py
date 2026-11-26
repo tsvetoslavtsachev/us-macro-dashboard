@@ -50,7 +50,11 @@ from analysis.delta import load_previous_published_regime
 
 # ── константи ───────────────────────────────────────────────────────────────
 OUTPUT_DIR = BASE_DIR / "output" / "api"
-LENSES = ["labor", "growth", "inflation", "liquidity"]
+LENSES = ["labor", "growth", "inflation", "liquidity"]  # режимът, breadth и вътрешните разминавания
+# Оценените лещи в macro_state.json (оттам светлините правят плочката на САЩ).
+# external влиза от ПРОЛЕТР4С1 (26.11.2026, реш. Ц. „Да, по препоръките ти“), по рязката
+# промяна като в EU; не гласува в режима. fiscal и housing остават само за показване.
+SCORED_LENSES = LENSES + ["external"]
 
 # Кои серии да включим в series_data.json (ключови за графиките)
 # Избрани по важност за всяка леща
@@ -107,7 +111,8 @@ CHART_SERIES = {
         # ПРОЛЕТР4 (26.11.2026, реш. Ц.): каталожни, вече в оценката, досега непоказвани
         "HSN1F", "MORTGAGE30US",
     ],
-    # ПРОЛЕТР4 (26.11.2026, реш. Ц.): само за показване; external и fiscal не са в LENSES
+    # ПРОЛЕТР4 (26.11.2026, реш. Ц.): external е оценена от ПРОЛЕТР4С1 (SCORED_LENSES);
+    # fiscal остава само за показване
     "external": ["BOPGSTB", "BOPTEXP", "USD_BROAD"],
     "fiscal": ["FED_DEFICIT", "FED_DEBT_GDP", "FED_INTEREST"],
 }
@@ -246,7 +251,7 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     # прозорец) — виж LENS_SCORING_METHODOLOGY.md. breadth_pct остава като
     # второстепенна прозрачна цифра. anomaly/new_extreme идват от exec_summary.
     lenses_out = {}
-    for lens in LENSES:
+    for lens in SCORED_LENSES:
         exec_row = next(
             (r for r in exec_summary.lens_rows if r.lens == lens), None
         )
@@ -450,6 +455,7 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
             raw_series, name=series_id,
             transform=transform,
             polarity=polarity_for(series_id, primary_lens),
+            scoring_mode=meta.get("scoring_mode", "level"),
         )
 
         # Relative staleness (каденс-aware) — серия изостанала с месеци зад peer-ите

@@ -162,6 +162,29 @@ def apply_transform(series: pd.Series, transform: str) -> pd.Series:
     return s  # level
 
 
+def momentum_signal(
+    series: pd.Series,
+    smooth: int = 3,
+    k: Optional[int] = None,
+) -> pd.Series:
+    """Изгладен Δ: сигналът за момент-скоринг (external леща), огледало на EU.
+
+    Скорира РЯЗКАТА ПРОМЯНА, не нивото: k-периодната промяна на изгладената
+    (smooth-периодна MA) серия. Подаваш ВЕЧЕ трансформираната серия (yoy_pct/level).
+    k=None → ~3 месеца (месечни=3, тримесечни=1, седмични=13, дневни=63).
+
+    Защо (ПРОЛЕТР4С1, 26.11.2026): по ниво външната леща на САЩ светва в 0,8% от
+    месеците и не вижда тарифната 2025; по промяна светва в 6,7-10%, колкото EU.
+    """
+    s = series.dropna()
+    if s.empty:
+        return s
+    if k is None:
+        k = max(1, round(_infer_yoy_periods(s) / 4))
+    sm = s.rolling(window=smooth, min_periods=1).mean()
+    return sm.diff(k).dropna()
+
+
 def robust_stats_latest(
     series: pd.Series,
     window_years: int = 10,

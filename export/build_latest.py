@@ -73,13 +73,20 @@ def _newest_context_md() -> Path | None:
     return candidates[-1]
 
 
+# Лещите в сбора = режимните (export_api.LENSES). external е оценена от ПРОЛЕТР4С1
+# (26.11.2026) и се изброява в manifest-а, но не влиза в сбора: огледало на
+# quick_briefing._composite_score, който брои само редовете на режима. Тестът пази
+# двата списъка равни.
+COMPOSITE_LENSES = ("labor", "growth", "inflation", "liquidity")
+
+
 def _composite_from_lenses(lenses: dict) -> float | None:
-    """Composite = mean на per-lens score-овете (skip None/NaN). Огледало на
+    """Composite = mean на score-овете на режимните лещи (skip None/NaN). Огледало на
     quick_briefing._composite_score (mean breadth_agg × 100)."""
     vals = [
         l["score"]
-        for l in lenses.values()
-        if isinstance(l.get("score"), (int, float))
+        for k, l in lenses.items()
+        if k in COMPOSITE_LENSES and isinstance(l.get("score"), (int, float))
     ]
     if not vals:
         return None
